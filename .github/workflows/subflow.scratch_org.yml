@@ -37,7 +37,7 @@ jobs:
       actions: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Check if Label '${{ env.LABEL_RECREATE_SCRATCH_ORG }}' is Set
         id: recreate-scratch-org
         run: echo "isSet=$(gh api /repositories/${{ github.repository_id }}/issues/${{ inputs.pr_number }}/labels | jq -c '[ . [] | select(.name | contains("${{ env.LABEL_RECREATE_SCRATCH_ORG }}")) ] != []')" >> $GITHUB_OUTPUT
@@ -72,7 +72,7 @@ jobs:
     continue-on-error: true
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/cache/restore@v4
         with:
@@ -134,7 +134,7 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Authenticate Dev Hub
         uses: sopra-steria-salesforce/sf-cli-setup@v1
         continue-on-error: true
@@ -178,7 +178,7 @@ jobs:
       pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: sopra-steria-salesforce/sf-cli-setup@v1
         with:
           sf-cli-version: 2.98.6

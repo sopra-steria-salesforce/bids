@@ -19,7 +19,7 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: sopra-steria-salesforce/sf-cli-setup@v1
         with:
           sf-cli-version: 2.98.6
@@ -56,7 +56,7 @@ jobs:
       id-token: write
     if: fromJSON(needs.check-promotion.outputs.shouldPromote)
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: sopra-steria-salesforce/sf-cli-setup@v1
         with:
           sf-cli-version: 2.98.6
@@ -80,7 +80,7 @@ jobs:
     needs: check-promotion
     if: fromJSON(needs.check-promotion.outputs.shouldPromote)
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set Main Branch
         run: |
           echo "MAIN_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')" >> $GITHUB_ENV
@@ -90,7 +90,7 @@ jobs:
         with:
           app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
           private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ env.MAIN_BRANCH }}
           token: ${{ steps.generate_token.outputs.token }}
@@ -115,7 +115,7 @@ jobs:
       pull-requests: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Get New Release Name
         run: echo "name=$(echo ${{ inputs.TAG }} | sed 's|\(.*\)\..*|\1|')" >> $GITHUB_OUTPUT

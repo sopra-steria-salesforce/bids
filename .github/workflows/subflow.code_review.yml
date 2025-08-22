@@ -78,7 +78,7 @@ jobs:
     needs: code-review-check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Get Jira ID
         id: jira
         run: echo "id=$(echo ${{ github.event.client_payload.head_ref }} | grep -Po '\w*-\d\w+')" >> $GITHUB_OUTPUT
@@ -162,7 +162,7 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: mkdir -p ${{ env.CACHE_FOLDER }}
       - run: echo -n "${{ needs.post-code-review-post.outputs.thread-ts }}" >> ${{ env.CACHE_FOLDER }}/${{ env.CACHE_FILE }}
 

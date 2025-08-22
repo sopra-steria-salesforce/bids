@@ -33,7 +33,7 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: MariachiBear/get-repo-name-action@v1.3.0
         id: repo-name
 
@@ -94,7 +94,7 @@ jobs:
       name: ${{ inputs.ENV }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Install npm dependencies
       - uses: actions/create-github-app-token@v2

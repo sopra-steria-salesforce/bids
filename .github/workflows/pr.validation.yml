@@ -46,7 +46,7 @@ jobs:
       issues: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: echo "exists=$(cat ./sfdx-project.json | jq -r '.packageDirectories[0].dependencies | length > 0')" >> $GITHUB_OUTPUT
         id: dependencies
@@ -131,7 +131,7 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: sopra-steria-salesforce/sf-cli-setup@v1
         if: needs.scratch-org.outputs.username
         with:
@@ -197,7 +197,7 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: sopra-steria-salesforce/sf-cli-setup@v1
         if: needs.scratch-org.outputs.username
         with:
@@ -242,7 +242,7 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
         continue-on-error: true # fails if no tests run, but the step to check if classes exists will catch it and exit
         with:
