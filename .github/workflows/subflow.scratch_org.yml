@@ -1,0 +1,234 @@
+name: '[Subflow] Scratch Org Helper'
+on:
+  workflow_call:
+    inputs:
+      alwaysGetScratchOrg:
+        type: boolean
+        default: false
+      durationDays:
+        type: number
+        default: 5
+      deleteExistingScratchOrg:
+        type: boolean
+        default: false
+      pr_number:
+        type: string
+    outputs:
+      username:
+        value: ${{ jobs.create-org.outputs.username || jobs.find-org.outputs.username }}
+      instanceUrl:
+        value: ${{ jobs.create-org.outputs.instanceUrl || jobs.find-org.outputs.instanceUrl }}
+env:
+  SCRATCH_ORG_NAME: scratch-org
+  NORMAL_CONFIG_FILE: config/project-scratch-def.json
+  SNAPSHOT_CONFIG_FILE: config/project-scratch-def-snapshot.json
+  CACHE_FOLDER: scratch-org-cache
+  CACHE_USERNAME_FILE: username
+  CACHE_INSTANCEURL_FILE: instanceUrl
+  LABEL_RECREATE_SCRATCH_ORG: recreate-scratch-org
+  LABEL_DISABLE_SNAPSHOT: disable-snapshot
+jobs:
+  init:
+    name: init
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      actions: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check if Label '${{ env.LABEL_RECREATE_SCRATCH_ORG }}' is Set
+        id: recreate-scratch-org
+        run: echo "isSet=$(gh api /repositories/${{ github.repository_id }}/issues/${{ inputs.pr_number }}/labels | jq -c '[ . [] | select(.name | contains("${{ env.LABEL_RECREATE_SCRATCH_ORG }}")) ] != []')" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if Label '${{ env.LABEL_DISABLE_SNAPSHOT }}' is Set
+        id: disable-snapshot
+        run: echo "isSet=$(gh api /repositories/${{ github.repository_id }}/issues/${{ inputs.pr_number }}/labels | jq -c '[ . [] | select(.name | contains("${{ env.LABEL_DISABLE_SNAPSHOT }}")) ] != []')" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove Label '${{ env.LABEL_RECREATE_SCRATCH_ORG }}'
+        if: steps.recreate-scratch-org.outputs.isSet == 'true'
+        run: gh api --silent --method DELETE /repositories/${{ github.repository_id }}/issues/${{ inputs.pr_number }}/labels/${{ env.LABEL_RECREATE_SCRATCH_ORG }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    outputs:
+      recreateScratchOrg: ${{ steps.recreate-scratch-org.outputs.isSet == 'true' }}
+      disableSnapshot: ${{ steps.disable-snapshot.outputs.isSet == 'true' }}
+
+  # -------------------------------------------------------------------------- #
+  #                                    find                                    #
+  # -------------------------------------------------------------------------- #
+
+  find-org:
+    name: find
+    permissions:
+      contents: read
+      id-token: write
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.CACHE_FOLDER }}
+          key: scratch-org-pr-${{ inputs.pr_number }}-${{ github.run_id }}
+          restore-keys: scratch-org-pr-${{ inputs.pr_number }}
+
+      - run: cat ${{ env.CACHE_FOLDER }}/${{ env.CACHE_USERNAME_FILE }} && cat ${{ env.CACHE_FOLDER }}/${{ env.CACHE_INSTANCEURL_FILE }} && echo "cached=true" >> $GITHUB_OUTPUT || echo "cached=false" >> $GITHUB_OUTPUT
+        id: check
+
+      - run: echo "SCRATCH_ORG_USERNAME=$(cat ${{ env.CACHE_FOLDER }}/${{ env.CACHE_USERNAME_FILE }})" >> $GITHUB_ENV
+        continue-on-error: true
+        if: steps.check.outputs.cached == 'true'
+      - run: echo "SCRATCH_ORG_INSTANCE_URL=$(cat ${{ env.CACHE_FOLDER }}/${{ env.CACHE_INSTANCEURL_FILE }})" >> $GITHUB_ENV
+        continue-on-error: true
+        if: steps.check.outputs.cached == 'true'
+
+      - name: Authenticate Scratch Org
+        uses: sopra-steria-salesforce/sf-cli-setup@v1
+        continue-on-error: true
+        if: steps.check.outputs.cached == 'true'
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ env.SCRATCH_ORG_USERNAME }}
+          instance-url: ${{ env.SCRATCH_ORG_INSTANCE_URL }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+          set-default-org: true
+
+      - name: Check if Scratch Org Exists
+        id: check-org
+        if: steps.check.outputs.cached == 'true'
+        run: sf org:display --target-org ${{ env.SCRATCH_ORG_USERNAME }} && echo "exists=true" >> $GITHUB_OUTPUT || echo "exists=false" >> $GITHUB_OUTPUT
+
+      - name: Output Scratch Org Auth
+        if: steps.check-org.outputs.exists == 'true'
+        id: scratch-org
+        run: |
+          echo "username=${{ env.SCRATCH_ORG_USERNAME }}" >> $GITHUB_OUTPUT
+          echo "instanceUrl=${{ env.SCRATCH_ORG_INSTANCE_URL }}" >> $GITHUB_OUTPUT
+
+    outputs:
+      exists: ${{ steps.check-org.outputs.exists || 'false' }}
+      username: ${{ steps.scratch-org.outputs.username }}
+      instanceUrl: ${{ steps.scratch-org.outputs.instanceUrl }}
+
+  # -------------------------------------------------------------------------- #
+  #                                   delete                                   #
+  # -------------------------------------------------------------------------- #
+
+  delete:
+    name: delete existing
+    # if an existing org was found AND it should be deleted (either parent job specifies OR the label 'recreate-scratch-org' is set)
+    if: fromJSON(needs.find-org.outputs.exists) && (inputs.deleteExistingScratchOrg || needs.init.outputs.recreateScratchOrg == 'true')
+    continue-on-error: true
+    needs: [init, find-org]
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Authenticate Dev Hub
+        uses: sopra-steria-salesforce/sf-cli-setup@v1
+        continue-on-error: true
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ vars.SF_PROD_USERNAME }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+          set-default-dev-hub: true
+      - name: Authenticate Scratch Org
+        uses: sopra-steria-salesforce/sf-cli-setup@v1
+        continue-on-error: true
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ needs.find-org.outputs.username }}
+          instance-url: ${{ needs.find-org.outputs.instanceUrl }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+
+      - name: Scratch Org Cleanup
+        continue-on-error: true
+        run: sf org:delete:scratch --no-prompt --target-org ${{ needs.find-org.outputs.username }}
+
+  # -------------------------------------------------------------------------- #
+  #                                   create                                   #
+  # -------------------------------------------------------------------------- #
+
+  create-org:
+    name: create
+    needs: [init, find-org]
+    # if parent job always wants a new scratch org
+    # AND
+    #   should delete the existing one
+    #   OR the label 'recreate-scratch-org' is set
+    #   OR an existing org could be found/authenticated
+    if: inputs.alwaysGetScratchOrg && (inputs.deleteExistingScratchOrg || needs.init.outputs.recreateScratchOrg == 'true' || needs.find-org.outputs.exists == 'false')
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sopra-steria-salesforce/sf-cli-setup@v1
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ vars.SF_PROD_USERNAME }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+          set-default-dev-hub: true
+
+      - name: Use Normal Config File
+        if: needs.init.outputs.disableSnapshot == 'true'
+        run: echo "CONFIG_FILE=${{ env.NORMAL_CONFIG_FILE }}" >> $GITHUB_ENV
+
+      - name: Use Snapshot Config File (if it exists)
+        if: needs.init.outputs.disableSnapshot == 'false'
+        run: echo "CONFIG_FILE=$([ -f ${{ env.SNAPSHOT_CONFIG_FILE }} ] && echo ${{ env.SNAPSHOT_CONFIG_FILE }} || echo ${{ env.NORMAL_CONFIG_FILE }})" >> $GITHUB_ENV
+
+      - name: Create scratch org
+        run: echo '${{ secrets.SF_PROD_CLIENT_SECRET }}' | sf org:create:scratch --client-id ${{ secrets.SF_PROD_CLIENT_ID }} --definition-file ${{ env.CONFIG_FILE }} --alias ${{ env.SCRATCH_ORG_NAME }} --wait 20 --duration-days ${{ inputs.durationDays }} --json
+
+      - name: Output Scratch Org Auth
+        id: new-scratch-org
+        run: |
+          org=$(sf org:display --target-org ${{ env.SCRATCH_ORG_NAME }} --json)
+          echo "username=$(echo $org | jq -r '.result.username' )" >> $GITHUB_OUTPUT
+          echo "instanceUrl=$(echo $org | jq -r '.result.instanceUrl' )" >> $GITHUB_OUTPUT
+
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+
+      # Uses a repository dispatch to cache, because the scope for those workflows are the master branch. Meaning any branch can fetch the cached scratch org. Necessary for some other workflows to be able to use the cached scratch org.
+      - name: Save Auth for Caching
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          event-type: cache-data
+          client-payload: |-
+            {
+              "username": "${{ steps.new-scratch-org.outputs.username }}",
+              "username_file": "${{ env.CACHE_USERNAME_FILE }}",
+              "instanceUrl": "${{ steps.new-scratch-org.outputs.instanceUrl }}",
+              "instanceUrl_file": "${{ env.CACHE_INSTANCEURL_FILE }}",
+              "folder": "${{ env.CACHE_FOLDER }}",
+              "cache_id": "${{ env.CACHE_ID }}"
+            }
+        env:
+          CACHE_ID: scratch-org-pr-${{ inputs.pr_number }}-${{ github.run_id }}
+
+    outputs:
+      username: ${{ steps.new-scratch-org.outputs.username }}
+      instanceUrl: ${{ steps.new-scratch-org.outputs.instanceUrl }}

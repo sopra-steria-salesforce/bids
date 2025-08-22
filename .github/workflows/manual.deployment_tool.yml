@@ -1,0 +1,84 @@
+name: '[MANUAL] Deployment Tool'
+on:
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+jobs:
+  package:
+    name: Get Package ID
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sopra-steria-salesforce/sf-cli-setup@v1
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ vars.SF_PROD_USERNAME }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+          set-default-dev-hub: true
+
+      - run: echo "PACKAGE_NAME=$(cat sfdx-project.json | jq '.packageDirectories | map(select(.package != null))[0].package' -r)" >> $GITHUB_ENV
+      - name: Get Package ID from Tag
+        if: github.ref_type == 'tag'
+        run: |
+          tag=$(echo ${{ github.ref_name }} | sed 's/v//g') #! remove the v in front of the tag
+          sf package version list --packages ${{ env.PACKAGE_NAME }} --json --order-by="CreatedDate desc" | jq -r  '.result | map(select(.Branch == null and .Version == "'$tag'"))' >> packages.json
+      - name: Get Newest Package ID
+        if: github.ref_type == 'branch'
+        run: sf package version list --packages ${{ env.PACKAGE_NAME }} --json --order-by="CreatedDate desc" | jq -r  '.result | map(select(.Branch == null))' >> packages.json
+
+      - name: Output Package ID
+        id: package
+        run: |
+          echo "id=$(cat packages.json | jq -r '.[0].SubscriberPackageVersionId')" >> $GITHUB_OUTPUT
+          echo "tag=v$(cat packages.json | jq -r '.[0].Version')" >> $GITHUB_OUTPUT
+      - run: echo "::notice::Found package ID ${{ steps.package.outputs.id }} on tag ${{ steps.package.outputs.tag }}"
+
+    outputs:
+      id: ${{ steps.package.outputs.id }}
+      tag: ${{ steps.package.outputs.tag }}
+
+  promote-package:
+    name: Promote
+    needs: package
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: read
+    uses: ./.github/workflows/subflow.promotion.yml
+    secrets: inherit
+    with:
+      PACKAGE_ID: ${{ needs.package.outputs.id }}
+      TAG: ${{ needs.package.outputs.tag }}
+
+  deploy:
+    name: Production
+    needs: [promote-package, package]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.deploy_package.yml
+    secrets: inherit
+    with:
+      ENV: 'prod'
+      PACKAGE_ID: ${{ needs.package.outputs.id }}
+      TAG: ${{ needs.package.outputs.tag }}
+      POST_TO_SLACK: true
+
+  slack-release-notes:
+    name: Slack Release Notes
+    needs: [package, deploy]
+    if: vars.SF_SLACK_ENABLED == 'true'
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: read
+    uses: ./.github/workflows/subflow.slack_release.yml
+    secrets: inherit
+    with:
+      ENV: 'prod'
+      TAG: ${{ needs.package.outputs.tag }}

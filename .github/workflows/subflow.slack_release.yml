@@ -1,0 +1,88 @@
+name: '[Subflow] Release Notes'
+on:
+  workflow_call:
+    inputs:
+      ENV:
+        required: true
+        type: string
+      TAG:
+        required: true
+        type: string
+jobs:
+  slack-prep:
+    name: prep
+    if: vars.SF_SLACK_ENABLED == 'true'
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # find the previous non-draft, non-prerelease and non-inputs.TAG release
+      - run: tag=$(gh api /repositories/${{ github.repository_id }}/releases --jq '[.[] | select(.prerelease==false and .draft==false and .tag_name != "${{ inputs.TAG }}" )][0].tag_name') && echo "PREVIOUS_TAG=$tag" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build Changelog
+      - name: Build Changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        id: changelog
+        with:
+          configuration: '.github/changelog/slack_changelog.json'
+          fromTag: ${{ env.PREVIOUS_TAG }}
+          toTag: ${{ inputs.TAG }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Convert Markdown to mrkdwn
+      - name: Convert Markdown to mrkdwn
+        id: mrkdwn
+        uses: denis-trofimov/slackify-markdown-action@v1.0.0
+        with:
+          text: ${{ steps.changelog.outputs.changelog }}
+
+      # Modify the changelog
+      - name: Modify the changelog
+        id: modified
+        run: |
+          set -o noglob
+          log=$(cat << "EOF" | grep -v Bumping
+          ${{ steps.mrkdwn.outputs.text }}
+          EOF
+          )
+          log="${log//'"'/}"
+          log="${log//'%'/'%25'}"
+          log="${log//$'\n'/'\n'}"
+          log="${log//$'\r'/'\n'}"
+          log="${log//$'&'/'&amp;'}"
+
+          echo "changelog=$log" >> $GITHUB_OUTPUT
+
+      - uses: MariachiBear/get-repo-name-action@v1.3.0
+        id: repo-name
+
+      - name: Fetch Payload
+        id: payload
+        run: |
+          echo 'blocks=[{"type":"header","text":{"type":"plain_text","text":"[${{ steps.repo-name.outputs.repository-name }}] Ny release 🎉"}},{"type":"section","text":{"type":"mrkdwn","text":"${{ steps.modified.outputs.changelog }}"}},{"type":"actions","elements":[{"type":"button","text":{"type":"plain_text","text":"☁️ Åpne Salesforce","emoji":true},"style":"primary","url":"${{ vars.SF_PROD_INSTANCE_URL }}"}]}]' >> $GITHUB_OUTPUT
+          echo "text=Deployment ${{ steps.repo-name.outputs.repository-name }} → ${{ inputs.ENV }}" >> $GITHUB_OUTPUT
+    outputs:
+      blocks: ${{ steps.payload.outputs.blocks }}
+      text: ${{ steps.payload.outputs.text }}
+  slack-release-notes:
+    name: slack release notes
+    needs: slack-prep
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.slack.yml
+    secrets: inherit
+    with:
+      job_name: slack release notes
+      post-to-release-channel: true
+      blocks: ${{ needs.slack-prep.outputs.blocks }}
+      text: ${{ needs.slack-prep.outputs.text }}

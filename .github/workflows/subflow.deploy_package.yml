@@ -1,0 +1,233 @@
+name: '[Subflow] Deploy'
+on:
+  workflow_call:
+    inputs:
+      ENV:
+        required: true
+        type: string
+      PACKAGE_ID:
+        required: true
+        type: string
+      TAG:
+        required: true
+        type: string
+      POST_TO_SLACK:
+        type: boolean
+    outputs:
+      successfullyInstalled:
+        description: 'Successful install'
+        value: ${{ jobs.deploy.outputs.successfullyInstalled }}
+      installOutput:
+        description: 'Install output log'
+        value: ${{ jobs.deploy.outputs.installOutput }}
+jobs:
+  # -------------------------------------------------------------------------- #
+  #                                    Slack                                   #
+  # -------------------------------------------------------------------------- #
+
+  slack-prep:
+    name: prep
+    if: vars.SF_SLACK_ENABLED == 'true' && inputs.POST_TO_SLACK == true
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: MariachiBear/get-repo-name-action@v1.3.0
+        id: repo-name
+
+      - name: Get SF url
+        uses: thaitype/actions-switch-case@v1
+        id: sf-url
+        with:
+          default: ${{ vars.SF_PROD_INSTANCE_URL }}
+          conditionals-with-values: |
+            ${{ inputs.ENV == 'prod' }} => ${{ vars.SF_PROD_INSTANCE_URL }}
+            ${{ inputs.ENV == 'preprod' }} => ${{ vars.SF_PREPROD_INSTANCE_URL }}
+            ${{ inputs.ENV == 'sit' }} => ${{ vars.SF_SIT_INSTANCE_URL }}
+
+      - name: Get Changelog URL
+        uses: thaitype/actions-switch-case@v1
+        id: changelog
+        with:
+          default: ${{ github.repository }}
+          conditionals-with-values: |
+            ${{ inputs.ENV == 'prod' || inputs.ENV == 'sit' }} => ${{ github.repository }}/releases/tag/${{ inputs.TAG }}
+            ${{ inputs.ENV == 'preprod' }} => ${{ github.repository }}/commits/preprod
+
+      # Use https://app.slack.com/block-kit-builder to build messages.
+      - name: Fetch Payload
+        id: slack-data
+        run: |
+          echo 'blocks=[{"type":"header","text":{"type":"plain_text","text":"[${{ steps.repo-name.outputs.repository-name }}] Deployment → ${{ inputs.ENV }}","emoji":true}},{"type":"section","fields":[{"type":"mrkdwn","text":"*Version*\n${{ inputs.TAG }}"},{"type":"mrkdwn","text":"*Started By*\n<https://github.com/${{ github.actor }}|${{ github.actor }}>"}],"accessory":{"type":"overflow","options":[{"text":{"type":"plain_text","text":"👀 View Changelog"},"url":"https://github.com/${{ steps.changelog.outputs.match }}"},{"text":{"type":"plain_text","text":"🤓 View Logs"},"url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"},{"text":{"type":"plain_text","text":"🤖 Open Repo"},"url":"https://github.com/${{ github.repository }}"},{"text":{"type":"plain_text","text":"☁️ Open ${{ inputs.ENV }}"},"url":"${{ steps.sf-url.outputs.match }}"}]}}]' >> $GITHUB_OUTPUT
+          echo "text=Deployment ${{ steps.repo-name.outputs.repository-name }} → ${{ inputs.ENV }}" >> $GITHUB_OUTPUT
+    outputs:
+      blocks: ${{ steps.slack-data.outputs.blocks }}
+      text: ${{ steps.slack-data.outputs.text }}
+  slack-message:
+    name: Slack
+    needs: slack-prep
+    if: vars.SF_SLACK_ENABLED == 'true' && inputs.POST_TO_SLACK == true
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.slack.yml
+    secrets: inherit
+    with:
+      job_name: slack post
+      post-to-deployment-channel: true
+      blocks: ${{ needs.slack-prep.outputs.blocks }}
+      text: ${{ needs.slack-prep.outputs.text }}
+      attachment_type: in_progress
+
+  # -------------------------------------------------------------------------- #
+  #                                   Deploy                                   #
+  # -------------------------------------------------------------------------- #
+
+  deploy:
+    name: deploy
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: ${{ inputs.ENV }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Install npm dependencies
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - uses: actions/setup-node@v4
+        with:
+          cache: npm # fetch cache of packages to install
+          token: ${{ steps.generate_token.outputs.token }} # needs custom token to avoid rate limit
+          node-version: 20
+      - run: npm ci --prefer-offline --no-audit # force offline installs for quicker run
+
+      # Install & Authorize sf cli
+      - name: Install & Authorize sf cli (${{ inputs.ENV }})
+        uses: sopra-steria-salesforce/sf-cli-setup@v1
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ inputs.ENV == 'prod' && vars.SF_PROD_USERNAME || inputs.ENV == 'preprod' && vars.SF_PREPROD_USERNAME || vars.SF_SIT_USERNAME }}
+          client-id: ${{ inputs.ENV == 'prod' && secrets.SF_PROD_CLIENT_ID || inputs.ENV == 'preprod' && secrets.SF_PREPROD_CLIENT_ID || secrets.SF_SIT_CLIENT_ID }}
+          private-key: ${{ inputs.ENV == 'prod' && secrets.SF_PROD_PRIVATE_KEY || inputs.ENV == 'preprod' && secrets.SF_PREPROD_PRIVATE_KEY || secrets.SF_SIT_PRIVATE_KEY }}
+          set-default-org: true
+
+      # TODO: Deploy Picklist
+      # - name: Deploy Picklist Values
+      #   run: deploy stuff
+
+      # Install package in target org
+      - name: Install package in target org
+        id: deployment
+        run: sf package:install --package ${{ inputs.PACKAGE_ID }} --installation-key ${{ secrets.SF_PACKAGE_KEY }} --wait 20 --publish-wait 20 --no-prompt --json | tee output
+
+      # Check for Warnings
+      - name: Check for Warnings
+        run: |
+          cat output | jq -c -r '.warnings[]' | while read -r warning; do
+            echo "::warning::$warning"
+          done
+
+      # Check for Errors
+      - name: Check for Errors
+        id: check-error
+        run: |
+          if [ $(cat output | jq '.status') != "0" ]; then
+
+            echo "::error::❌ PACKAGE INSTALLATION FAILED"
+            echo "successfullyInstalled=false" >> $GITHUB_OUTPUT
+
+            #* log to github action output
+            cat output | jq -c -r '.result.Error | .[]?' | while read -r error; do
+              echo "::error::$error"
+            done
+            cat output | jq -c -r '.message' | while read -r error; do
+              if [ "$error" != "null" ]; then
+                echo "::error::$error"
+              fi
+            done  
+
+            #* output for slack
+            errorOutput=$(cat output | jq -r '.message')
+            errorOutput="${errorOutput//$'\n'/'\\n'}"
+            echo -e "installOutput=$errorOutput" >> $GITHUB_OUTPUT
+            
+            #* cause an error in github, while saving the output
+            exit 125
+          fi
+          echo "successfullyInstalled=true" >> $GITHUB_OUTPUT
+
+      # Run Post-Install Steps
+      - name: Run Post-Install Steps
+        run: npx ssdx resource --post-install --test-level RunLocalTests --show-output --ci
+
+      # View SSDX Logs
+      - name: View SSDX Logs
+        run: |
+          errors=$(cat .ssdx/logs/*.log | npx pino-pretty --singleLine --hideObject --minimumLevel error | wc -l)
+          if [ "$errors" -ne 0 ]; then echo "::error::$errors SSDX errors found"; fi
+          cat .ssdx/logs/*.log | npx pino-pretty
+          rm -rf .ssdx/logs
+
+    outputs:
+      successfullyInstalled: ${{ steps.check-error.outputs.successfullyInstalled }}
+      installOutput: ${{ steps.check-error.outputs.installOutput }}
+
+  # -------------------------------------------------------------------------- #
+  #                                Update Slack                                #
+  # -------------------------------------------------------------------------- #
+
+  slack-update:
+    name: slack status update
+    needs: [slack-prep, slack-message, deploy]
+    if: always() && inputs.POST_TO_SLACK == true
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.slack.yml
+    secrets: inherit
+    with:
+      job_name: slack status update
+      post-to-deployment-channel: true
+      update_ts: ${{ needs.slack-message.outputs.thread-ts }} # update this message
+      blocks: ${{ needs.slack-prep.outputs.blocks }} # need the original blocks, otherwise it will be removed
+      text: ${{ needs.slack-prep.outputs.text }} # need the original text, otherwise it will be removed
+      attachment_type: ${{ needs.deploy.outputs.successfullyInstalled == 'true' && 'completed' || 'failed' }} # updates the original post with success or failure
+
+  error-comment:
+    name: post error message on failure
+    needs: [slack-prep, slack-message, deploy]
+    if: (always() && needs.deploy.outputs.successfullyInstalled == 'false' && inputs.POST_TO_SLACK == true) || failure()
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.slack.yml
+    secrets: inherit
+    with:
+      job_name: slack error comment
+      post-to-deployment-channel: true
+      thread_ts: ${{ needs.slack-message.outputs.thread-ts }} # reply to the update instead, in case the original message failed to post
+      blocks: '[{"type":"section","text":{"type":"mrkdwn","text":"*Error Message*\n```${{ needs.deploy.outputs.installOutput }}```"}},{"type":"actions","elements":[{"type":"button","style":"danger","text":{"type":"plain_text","text":"🤓 View Logs","emoji":true},"url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]'
+
+  slack-notify-channel:
+    name: notify on failure
+    needs: [slack-prep, slack-message, deploy]
+    if: (always() && needs.deploy.outputs.successfullyInstalled == 'false' && inputs.POST_TO_SLACK == true) || failure()
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.slack.yml
+    secrets: inherit
+    with:
+      job_name: 'slack @channel comment'
+      post-to-deployment-channel: true
+      thread_ts: ${{ needs.slack-message.outputs.thread-ts }} # reply to the update instead, in case the original message failed to post
+      blocks: '[{"type":"section","text":{"type":"mrkdwn","text":"<!channel>, deployment failed 😢"}}]'
+      reply_broadcast: true # post the reply to the channel

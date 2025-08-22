@@ -1,0 +1,196 @@
+name: '[Slash] Commands'
+on:
+  issue_comment:
+    types: [created]
+  repository_dispatch:
+    types:
+      - retry-command
+      - snapshot-command
+      - auto-deploy-command
+      - login-command
+      - review-post-command
+env:
+  SCRATCH_ORG_NAME: scratch-org
+jobs:
+  # -------------------------------------------------------------------------- #
+  #                             Init Slash Commands                            #
+  # -------------------------------------------------------------------------- #
+
+  slashCommandDispatch:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issue_comment'
+    permissions: write-all
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - uses: peter-evans/slash-command-dispatch@v4
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          issue-type: pull-request
+          #! remember to add when adding new commands
+          commands: |
+            retry
+            snapshot
+            auto-deploy
+            login
+            review-post
+
+  # -------------------------------------------------------------------------- #
+  #                              Retry Validation                              #
+  # -------------------------------------------------------------------------- #
+
+  retry-validation:
+    name: retry-validation
+    if: github.event_name == 'repository_dispatch' && github.event.action == 'retry-command'
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.label.yml
+    secrets: inherit
+    with:
+      add_recreate_scratch_org_label: true #! will force a recreation of a scratch org
+      add_rerun_validation_label: true #! will re-run the validation script, see slash.commands.retry.yml
+      pull_or_issue_number: ${{ github.event.client_payload.pull_request.number }}
+
+  # -------------------------------------------------------------------------- #
+  #                               Instant Deploy                               #
+  # -------------------------------------------------------------------------- #
+
+  auto-deploy:
+    name: auto-deploy
+    if: github.event_name == 'repository_dispatch' && github.event.action == 'auto-deploy-command'
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.label.yml
+    secrets: inherit
+    with:
+      label: auto-deploy
+      pull_or_issue_number: ${{ github.event.client_payload.pull_request.number }}
+
+  # -------------------------------------------------------------------------- #
+  #                           Disable Code Review Post                         #
+  # -------------------------------------------------------------------------- #
+
+  disable-review-post:
+    name: review-post
+    if: github.event_name == 'repository_dispatch' && github.event.action == 'review-post-command'
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.label.yml
+    secrets: inherit
+    with:
+      label: disable-review-post
+      remove: ${{ github.event.client_payload.slash_command.args.unnamed.arg1 == 'enable' }} # enabling review post means removing 'disable-review-post' label, disabling means removing is false (so it will be added)
+      pull_or_issue_number: ${{ github.event.client_payload.pull_request.number }}
+
+  # TODO: when disabling, remove the slack post and delete the cache of the thread_id (see https://github.com/actions/cache/pull/130 or use gh api --method DELETE '/repositories/400134018/actions/caches?key=slack-ts-pr-XXX-XXXXXXXXXX')
+
+  # TODO: add a /review-post post command to add a review now
+  # TODO: post review when draft is ready and made into a normal PR
+
+  # Re-use subflow.code_review.yml to remove the slack post (needs some modifications)
+
+  # -------------------------------------------------------------------------- #
+  #                              Disable Snapshot                              #
+  # -------------------------------------------------------------------------- #
+
+  snapshot:
+    name: snapshot
+    if: github.event_name == 'repository_dispatch' && github.event.action == 'snapshot-command'
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.label.yml
+    secrets: inherit
+    with:
+      label: disable-snapshot
+      add_recreate_scratch_org_label: true #! will force a recreation of a scratch org to get one without a snapshot
+      # TODO: add a step somewhere to cancel already running validation, to force a re-run with a new scratch org.
+      add_rerun_validation_label: true #! will re-run the validation script, see slash.commands.retry.yml
+      remove: ${{ github.event.client_payload.slash_command.args.unnamed.arg1 == 'enable' }} # enabling snapshot means removing 'disable-snapshot' label, disabling means removing is false (so it will be added)
+      pull_or_issue_number: ${{ github.event.client_payload.pull_request.number }}
+
+  # -------------------------------------------------------------------------- #
+  #                                    Login                                   #
+  # -------------------------------------------------------------------------- #
+
+  login:
+    name: login
+    if: github.event_name == 'repository_dispatch' && github.event.action == 'login-command'
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+      pull-requests: write
+      actions: write
+    uses: ./.github/workflows/subflow.scratch_org.yml
+    secrets: inherit
+    with:
+      alwaysGetScratchOrg: false # only interested in existing orgs, we don't want a new one. Could consider making this optional, for example using /login createNewIfNoOrgFound=true
+      pr_number: ${{ github.event.client_payload.pull_request.number }}
+
+  post-login:
+    name: login / post
+    needs: login
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Post Error
+      - name: Post Error on Scratch Org
+        uses: peter-evans/create-or-update-comment@v4
+        if: needs.login.outputs.username == ''
+        with:
+          issue-number: ${{ github.event.client_payload.pull_request.number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            # ❌ Scratch Org Error
+
+            ## The login link could not be generated. Possible errors:
+
+            - The validation script failed
+            - The scratch org was made over 24 hours ago (re-run validation to get another)
+            - Authentication to the existing scratch org failed (re-run validation to get another)
+
+      - name: Authenticate Scratch Org
+        uses: sopra-steria-salesforce/sf-cli-setup@v1
+        if: needs.login.outputs.username
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ needs.login.outputs.username }}
+          instance-url: ${{ needs.login.outputs.instanceUrl }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+
+      - name: Create Scratch Org Url
+        if: needs.login.outputs.username
+        run: echo "URL=$(sf org:open --target-org ${{ needs.login.outputs.username }} --url-only --json | jq -r '.result.url')" >> $GITHUB_ENV
+
+      - name: Post Login Link
+        uses: peter-evans/create-or-update-comment@v4
+        if: needs.login.outputs.username
+        with:
+          issue-number: ${{ github.event.client_payload.pull_request.number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            # Scratch Org Login Link
+
+            - Login here: [${{ env.URL }}](${{ env.URL }})
+            - Expires after 1 hour, and only works once per person (request again if needed)

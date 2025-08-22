@@ -1,0 +1,33 @@
+name: '[Push] Sync'
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - main
+  pull_request: # only used for sync jobs to preprod and uat
+    types: closed
+    branches:
+      - preprod
+      - uat
+concurrency:
+  group: sync-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Sync
+    uses: ./.github/workflows/subflow.sync.yml
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    secrets: inherit
+    with:
+      env: ${{ matrix.ENV }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ENV: [preprod, uat]
+    

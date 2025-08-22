@@ -1,0 +1,329 @@
+name: '[PR] Validation'
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    paths-ignore:
+      - 'package.json'
+      - 'package-lock.json'
+concurrency:
+  group: validation-${{ github.base_ref }}-${{ github.head_ref }}
+  cancel-in-progress: true
+env:
+  SCRATCH_ORG_NAME: scratch-org
+jobs:
+  # -------------------------------------------------------------------------- #
+  #                                 Scratch Org                                #
+  # -------------------------------------------------------------------------- #
+
+  scratch-org:
+    name: Scratch Org
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+      pull-requests: write
+      actions: write
+    uses: ./.github/workflows/subflow.scratch_org.yml
+    if: contains(github.triggering_actor, '[bot]') == false || github.triggering_actor == 'github-bot[bot]' #! Skip if the actor is the custom bot. Allows the standard github-bot[bot] to trigger validation when running /retry
+    secrets: inherit
+    with:
+      alwaysGetScratchOrg: true
+      pr_number: ${{ github.event.number }}
+
+  # -------------------------------------------------------------------------- #
+  #                            Install Dependencies                            #
+  # -------------------------------------------------------------------------- #
+
+  install-dependencies:
+    name: Install Dependencies
+    needs: [scratch-org]
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+      issues: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: echo "exists=$(cat ./sfdx-project.json | jq -r '.packageDirectories[0].dependencies | length > 0')" >> $GITHUB_OUTPUT
+        id: dependencies
+
+      # FIRST VALIDATION RUN
+      #   * Dependencies will always be installed (cache will not be found. However, with snapshots it might be already up-to-date)
+      # N-TH VALIDATION RUN:
+      #   * If sfdx-project.json is changed, no cache will be found and dependencies should be re-installed
+      #   * If sfdx-project.json is NOT changed, a cache will be found and cause the installtion to be skipped
+      - uses: actions/cache@v4
+        id: dependencies-cache
+        with:
+          path: sfdx-project.json
+          key: dependency-changes-pr-${{ github.event.number }}-org-${{ needs.scratch-org.outputs.username }}-${{ hashFiles('sfdx-project.json') }}
+      - name: Authenticate DevHub
+        if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true'
+        uses: sopra-steria-salesforce/sf-cli-setup@v1
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ vars.SF_PROD_USERNAME }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+      - name: Authenticate Scratch Org
+        if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true' && needs.scratch-org.outputs.username
+        uses: sopra-steria-salesforce/sf-cli-setup@v1
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ needs.scratch-org.outputs.username }}
+          instance-url: ${{ needs.scratch-org.outputs.instanceUrl }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+
+      # Install npm dependencies
+      - uses: actions/create-github-app-token@v2
+        if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true'
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - uses: actions/setup-node@v4
+        if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true'
+        with:
+          cache: npm # fetch cache of packages to install
+          token: ${{ steps.generate_token.outputs.token }} # needs custom token to avoid rate limit
+          node-version: 20
+      - run: npm ci --prefer-offline --no-audit # force offline installs for quicker run
+        if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true'
+
+      # Run Pre-Dependencies Steps
+      - name: Run Pre-Dependencies Steps
+        if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true'
+        run: npx ssdx resource --pre-dependencies --target-org ${{ needs.scratch-org.outputs.username }} --show-output --ci
+
+      # View SSDX Logs
+      - name: View SSDX Logs
+        if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true'
+        run: |
+          errors=$(cat .ssdx/logs/*.log | npx pino-pretty --singleLine --hideObject --minimumLevel error | wc -l)
+          if [ "$errors" -ne 0 ]; then echo "::error::$errors SSDX errors found"; fi
+          cat .ssdx/logs/*.log | npx pino-pretty
+          rm -rf .ssdx/logs
+
+      # Get package keys
+      - name: Get package keys
+        if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true'
+        id: install-keys
+        run: echo "keys=$(jq -c '.packageDirectories[0].dependencies[]' ./sfdx-project.json | while read -r dependency; do if echo $dependency | jq -e '.versionNumber' > /dev/null; then echo -n "$(echo $dependency | jq -r '.package'):${{ secrets.SF_PACKAGE_KEY }} "; fi; done)" >> $GITHUB_OUTPUT
+
+      # Install sf depenencies
+      - run: npx sfp dependency:install --installationkeys "${{ steps.install-keys.outputs.keys }}" --targetusername ${{ needs.scratch-org.outputs.username }} --targetdevhubusername ${{ vars.SF_PROD_USERNAME }}
+        if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true'
+
+  # -------------------------------------------------------------------------- #
+  #                              Compile Metadata                              #
+  # -------------------------------------------------------------------------- #
+
+  compile:
+    name: Compile Metadata
+    needs: [scratch-org, install-dependencies]
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sopra-steria-salesforce/sf-cli-setup@v1
+        if: needs.scratch-org.outputs.username
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ needs.scratch-org.outputs.username }}
+          instance-url: ${{ needs.scratch-org.outputs.instanceUrl }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+
+      # Install npm dependencies
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - uses: actions/setup-node@v4
+        with:
+          cache: npm # fetch cache of packages to install
+          token: ${{ steps.generate_token.outputs.token }} # needs custom token to avoid rate limit
+          node-version: 20
+      - run: npm ci --prefer-offline --no-audit # force offline installs for quicker run
+
+      - name: Deactivate Source Tracking
+        run: sf org disable tracking --target-org ${{ needs.scratch-org.outputs.username }}
+
+      # Run Pre-Deploy Steps
+      - name: Run Pre-Deploy Steps
+        run: npx ssdx resource --pre-deploy --target-org ${{ needs.scratch-org.outputs.username }} --show-output --ci
+
+      # View SSDX Logs
+      - name: View SSDX Logs
+        run: |
+          errors=$(cat .ssdx/logs/*.log | npx pino-pretty --singleLine --hideObject --minimumLevel error | wc -l)
+          if [ "$errors" -ne 0 ]; then echo "::error::$errors SSDX errors found"; fi
+          cat .ssdx/logs/*.log | npx pino-pretty
+          rm -rf .ssdx/logs
+
+      # Deploy
+      - name: Push source to scratch org
+        run: sf project:deploy:start --ignore-conflicts --target-org ${{ needs.scratch-org.outputs.username }}
+
+      # Run Post-Deploy Steps
+      - name: Run Post-Deploy Steps
+        run: npx ssdx resource --post-deploy --target-org ${{ needs.scratch-org.outputs.username }} --show-output --ci
+
+      # View SSDX Logs
+      - name: View SSDX Logs
+        run: |
+          errors=$(cat .ssdx/logs/*.log | npx pino-pretty --singleLine --hideObject --minimumLevel error | wc -l)
+          if [ "$errors" -ne 0 ]; then echo "::error::$errors SSDX errors found"; fi
+          cat .ssdx/logs/*.log | npx pino-pretty
+          rm -rf .ssdx/logs
+
+  # -------------------------------------------------------------------------- #
+  #                               Run Apex Tests                               #
+  # -------------------------------------------------------------------------- #
+
+  run-tests:
+    name: Run Apex Tests
+    needs: [scratch-org, compile]
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sopra-steria-salesforce/sf-cli-setup@v1
+        if: needs.scratch-org.outputs.username
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ needs.scratch-org.outputs.username }}
+          instance-url: ${{ needs.scratch-org.outputs.instanceUrl }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+
+      # Get Test Classes
+      - name: Get Test Classes
+        id: test-classes-in-repo
+        run: echo "classes=$(cd force-app && grep -r -l -i --include='*.cls' '@istest' . | sed 's@.*/@@' | cut -f 1 -d '.' | paste -sd ',' - && cd ..)" >> $GITHUB_OUTPUT
+
+      # Run Apex tests in scratch org
+      - name: Run Apex tests
+        if: steps.test-classes-in-repo.outputs.classes
+        run: sf apex:test:run --class-names "${{ steps.test-classes-in-repo.outputs.classes }}" --code-coverage --result-format human --output-dir ./tests/apex --wait 20 --target-org ${{ needs.scratch-org.outputs.username }}
+
+      # Upload Apex test results
+      - name: Upload Test Results
+        # always() incudes cancelled, which is not needed here
+        if: steps.test-classes-in-repo.outputs.classes && (success() || failure())
+        uses: actions/upload-artifact@v4
+        with:
+          name: apex-tests
+          path: ./tests/apex
+          retention-days: 1
+          overwrite: true
+    outputs:
+      hasTestClasses: ${{ steps.test-classes-in-repo.outputs.classes }}
+
+  # -------------------------------------------------------------------------- #
+  #                         Validate 85% Code Coverage                         #
+  # -------------------------------------------------------------------------- #
+
+  check-code-coverage:
+    name: Validate 85% Code Coverage
+    needs: [run-tests]
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        continue-on-error: true # fails if no tests run, but the step to check if classes exists will catch it and exit
+        with:
+          name: apex-tests
+          path: ./tests/apex
+
+      # Check if repo has classes
+      - name: Check if repo has classes
+        id: has-classes
+        run: grep -r -l -i --include="*.cls" "" force-app && echo "has_classes=true" >> $GITHUB_OUTPUT || echo "has_classes=false" >> $GITHUB_OUTPUT
+
+      # Test repo has test classes, if it has classes
+      - name: Test if classes exists and at least one test class
+        if: steps.has-classes.outputs.has_classes == 'true' && needs.run-tests.outputs.hasTestClasses == ''
+        run: echo "::error::The repo contains classes, but no tests" && exit 125
+
+      # Get code coverage
+      - name: Get code coverage
+        id: getCodeCoverage
+        if: steps.has-classes.outputs.has_classes == 'true' && needs.run-tests.outputs.hasTestClasses
+        run: |
+
+          # Find non-test classes in the repo
+          classes=() && for p in $(grep -r -l -i --include="*.cls" "" force-app | sed 's@.*/@@'); do class=$(echo $p | cut -f 1 -d '.'); classes[${#classes[@]}]=$class; done
+
+          # Find the code coverage only for the classes in the repo (ignores other classes from dependencies)
+          totalCovered=0
+          totalLines=0
+          for row in $(jq -c -r '.[]' <<< "$(cat tests/apex/test-result-codecoverage.json)"); do
+            name=$(jq -r '.name' <<< $row)
+            if [[ " ${classes[@]} " =~ " ${name} " ]]; then
+            
+              covered=$(jq '.totalCovered' <<< $row)
+              lines=$(jq '.totalLines' <<< $row)
+              
+              if [[ $covered != "null" && $lines != "null" && $lines != "0" ]]; then
+                let totalCovered+=covered
+                let totalLines+=lines
+              fi
+            fi
+          done
+
+          let codecoverage=totalCovered*100/totalLines
+          echo "codecoverage=$(echo $codecoverage)" >> $GITHUB_OUTPUT
+
+      # Validate 85% Code Coverage
+      - name: Validate 85% Code Coverage
+        if: steps.has-classes.outputs.has_classes == 'true' && needs.run-tests.outputs.hasTestClasses
+        run: |
+          if [ ${{ steps.getCodeCoverage.outputs.codecoverage }} -lt 85 ]; then
+            echo "::error::The code coverage needs to be a minimum of 85%, but is currently ${{ steps.getCodeCoverage.outputs.codecoverage }}%"
+            exit 125
+          fi
+
+  # -------------------------------------------------------------------------- #
+  #                          Trigger Code Review Post                          #
+  # -------------------------------------------------------------------------- #
+
+  trigger-code-review-post:
+    name: Trigger Code Review Post
+    runs-on: ubuntu-latest
+    if: vars.SF_SLACK_ENABLED == 'true' && github.event.pull_request.draft == false
+    permissions:
+      contents: read
+      id-token: write
+    needs: check-code-coverage
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - name: Trigger Job to Post Review
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          event-type: post-code-review-post
+          client-payload: |-
+            {
+              "head_ref": "${{ github.head_ref }}",
+              "base_ref": "${{ github.base_ref }}",
+              "pr_number": "${{ github.event.number }}",
+              "actor": "${{ github.actor }}"
+            }

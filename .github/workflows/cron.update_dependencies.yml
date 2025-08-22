@@ -1,0 +1,148 @@
+name: '[CRON] Update Dependencies'
+on:
+  workflow_call: # run from another workflow
+    inputs:
+      update-to-beta-versions:
+        type: boolean
+        description: Update to beta versions (versions not yet in production)
+        default: false
+  workflow_dispatch: # run from the UI
+    inputs:
+      update-to-beta-versions:
+        type: boolean
+        description: Update to beta versions (versions not yet in production)
+        default: false
+  schedule:
+    - cron: '0 4 * * *'
+concurrency:
+  group: update-dependencies-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  check-dependencies:
+    name: Check Dependencies
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Dependencies
+        id: check
+        run: |
+          #* if dependencies key is missing
+          if [ $(jq '.packageDirectories[0] | has("dependencies")' ./sfdx-project.json) == false ]; then
+              exit 0
+          fi
+          #* if length is zero
+          if [ $(jq '.packageDirectories[0].dependencies | length' ./sfdx-project.json) == 0 ]; then
+              exit 0
+          fi
+          #* else can continue
+          echo "HAS_DEPENDENCIES=true" >> $GITHUB_OUTPUT
+    outputs:
+      HAS_DEPENDENCIES: ${{ steps.check.outputs.HAS_DEPENDENCIES || 'false' }}
+  update-dependencies:
+    name: Update Dependencies
+    needs: check-dependencies
+    if: needs.check-dependencies.outputs.HAS_DEPENDENCIES == 'true'
+    permissions:
+      contents: write
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.generate_token.outputs.token }} # allows push to master
+      - uses: sopra-steria-salesforce/sf-cli-setup@v1
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ vars.SF_PROD_USERNAME }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+          set-default-org: true
+
+      # Retrieve Package Names
+      - name: Retrieve Package Names
+        run: echo "PACKAGES=$(cat ./sfdx-project.json | jq -r -c $'.packageDirectories[0].dependencies | map(.package) | join("\',\'")')" >> $GITHUB_ENV
+
+      # Retrieve Newest Released Package Versions
+      - name: Retrieve Newest Released Package Versions
+        if: inputs.update-to-beta-versions == false
+        run: sf data query --query "SELECT Package2.Name, Name FROM Package2Version WHERE Package2.Name IN ('${{ env.PACKAGES }}') AND IsReleased = TRUE ORDER BY CreatedDate DESC LIMIT 500" --use-tooling-api --result-format=json > salesforce_packages.json
+
+      # Retrieve Newest Beta Package Versions
+      - name: Retrieve Newest Beta Package Versions
+        if: inputs.update-to-beta-versions == true
+        run: sf data query --query "SELECT Package2.Name, Name FROM Package2Version WHERE Package2.Name IN ('${{ env.PACKAGES }}') ORDER BY CreatedDate DESC LIMIT 500" --use-tooling-api --result-format=json > salesforce_packages.json
+
+      # Update Version Numbers
+      - name: Update Version Numbers
+        run: |
+          index=0
+          for dependency in $(jq -c '.packageDirectories[0].dependencies[]' ./sfdx-project.json); do
+              packageName=$(echo $dependency | jq -r '.package')
+              oldPackageVersion=$(echo $dependency | jq -r '.versionNumber')
+              newPackageVersion=$(jq -r -c '[.result.records[] | select(.Package2.Name == "'$packageName'")][0] | .Name' ./salesforce_packages.json).LATEST
+
+              echo "" && echo "Package Name: $packageName"
+              echo "Old Package Version: $oldPackageVersion"
+              echo "New Package Version: $newPackageVersion" && echo ""
+              printf -v versions '%s\n%s' "$oldPackageVersion" "$newPackageVersion"
+              
+              #* if the version is already the latest OR the version is null (null means the package/repo is way too old because it goes over the 500 limit from the query and can be ignored)
+              # TODO: can probably do a group by in the query in the previous steps to remove the LIMIT 500 part and avoid null.LATEST
+              if [ "$oldPackageVersion" = "$newPackageVersion" ] || [ "$newPackageVersion" == "null.LATEST" ]; then
+                  echo "No change, current version and newest released version are the same."
+                  project=$(jq '.packageDirectories[0].dependencies['$index'].versionNumber = "'$oldPackageVersion'"' ./sfdx-project.json)
+              elif [[ $versions = "$(sort -V <<< "$versions")" ]]; then
+                  echo "::notice::Upgraded $packageName from $oldPackageVersion to $newPackageVersion"
+                  project=$(jq '.packageDirectories[0].dependencies['$index'].versionNumber = "'$newPackageVersion'"' ./sfdx-project.json)
+              else
+                  echo "No change, because a beta version is manually added and is higher than newest released version"
+                  project=$(jq '.packageDirectories[0].dependencies['$index'].versionNumber = "'$oldPackageVersion'"' ./sfdx-project.json)
+              fi
+
+              echo $project > ./sfdx-project.json
+              
+              ((index=index+1))
+          done
+
+          rm salesforce_packages.json
+
+      # Install npm dependencies
+      - uses: actions/setup-node@v4
+        with:
+          cache: npm # fetch cache of packages to install
+          token: ${{ steps.generate_token.outputs.token }} # needs custom token to avoid rate limit
+          node-version: 20
+      - run: npm ci --prefer-offline --no-audit # force offline installs for quicker run
+
+      # Prettify sfdx-project.json
+      - name: Prettify sfdx-project.json
+        run: npm run prettier:file ./sfdx-project.json
+
+      # Check for Changes in sfdx-project.json
+      - name: Check for Changes in sfdx-project.json
+        id: diff
+        run: git diff --exit-code ./sfdx-project.json && echo "is_changed=false" >> $GITHUB_OUTPUT || echo "is_changed=true" >> $GITHUB_OUTPUT
+
+      # git add + commit + push
+      - uses: fregante/setup-git-user@v2
+      - run: git add ./sfdx-project.json
+        if: steps.diff.outputs.is_changed == 'true'
+      - run: git commit -m '[CI] Updated Dependencies'
+        if: steps.diff.outputs.is_changed == 'true'
+      - run: git push origin HEAD:${{ github.ref_name }}
+        if: steps.diff.outputs.is_changed == 'true'
+
+      # Log
+      - run: echo "::notice::✅ Dependencies updated successfully, see https://github.com/${{ github.repository }}/blob/main/sfdx-project.json"
+        if: steps.diff.outputs.is_changed == 'true'
+      - run: echo "::notice::👍 No changes detected, dependencies are up to date."
+        if: steps.diff.outputs.is_changed == 'false'
+      - run: echo "::notice::❌ Failed to push changes, check logs."
+        if: failure()

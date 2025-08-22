@@ -1,0 +1,24 @@
+{
+	"recommendations": [
+		"salesforce.salesforcedx-vscode",
+		"aaron-bond.better-comments",
+		"chakrounanas.turbo-console-log",
+		"dbaeumer.vscode-eslint",
+		"donjayamanne.githistory",
+		"eamodio.gitlens",
+		"ibm.output-colorizer",
+		"redhat.vscode-xml",
+		"vignaeshrama.sfdx-package-xml-generator",
+		"xabikos.javascriptsnippets",
+		"nik-creation.lwc-salesforce",
+		"esbenp.prettier-vscode",
+		"allanoricil.salesforce-schema-builder",
+		"allanoricil.salesforce-soql-editor",
+		"vscode-icons-team.vscode-icons",
+		"github.vscode-pull-request-github",
+		"rbalet.vscode-sorting-attrs",
+		"drossi750.vscode-salesforce-toolkit",
+		"sanjayrathore.quick-salesforce-apex-class",
+		"redhat.vscode-yaml"
+	]
+}

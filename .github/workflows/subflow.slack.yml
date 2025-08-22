@@ -1,0 +1,156 @@
+name: '[Subflow] Slack'
+on:
+  workflow_call:
+    inputs:
+      # Destination
+      job_name:
+        type: string
+        default: slack
+      post-to-deployment-channel:
+        type: boolean
+      post-to-release-channel:
+        type: boolean
+      post-to-sync-channel:
+        type: boolean
+      post-to-review-channel:
+        type: boolean
+      custom-channel-id:
+        type: string
+
+      # Thread ID
+      update_ts:
+        type: string
+      thread_ts:
+        type: string
+
+      # Sender
+      sender_name:
+        type: string
+      sender_icon:
+        type: string
+
+      # Content
+      blocks:
+        type: string
+      attachment_type:
+        type: string
+      text:
+        type: string
+      unfurl_links:
+        type: boolean
+        default: false
+      unfurl_media:
+        type: boolean
+        default: false
+      reply_broadcast:
+        type: boolean
+        default: false
+      reaction_name:
+        type: string
+      remove_reactions:
+        type: boolean
+        default: false
+
+    outputs:
+      thread-ts:
+        description: 'The Slack post ID'
+        value: ${{ jobs.slack.outputs.thread-ts }}
+env:
+  SLACK_ATTACHMENT_IN_PROGRESS: '[{"color":"dbab09","fields":[{"title":"Deployment","short":true,"value":"Deploying now..."}]}]'
+  SLACK_ATTACHMENT_COMPLETED: '[{"color":"28a745","fields":[{"title":"Deployment","short":true,"value":"Success"}]}]'
+  SLACK_ATTACHMENT_FAILED: '[{"color":"ff0000","fields":[{"title":"Deployment","short":true,"value":"Failed, see thread for details"}]}]'
+  SIT_SLACK_CHANNEL_ID: 'C06LT3CBR7E'
+jobs:
+  slack:
+    name: ${{ inputs.job_name }}
+    if: vars.SF_SLACK_ENABLED == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      # Set Deployment Channel
+      # -----------------------------------------------------
+      - name: ${{ inputs.post-to-deployment-channel && '✅' || '🔘' }} Post to Deployment Channel
+        if: inputs.post-to-deployment-channel
+        run: echo "SLACK_CHANNEL=${{ vars.SF_SLACK_DEPLOYMENT_CHANNEL_ID }}" >> $GITHUB_ENV
+      # Set Release Channel
+      # -----------------------------------------------------
+      - name: ${{ inputs.post-to-release-channel && '✅' || '🔘' }} Post to Release Channel
+        if: inputs.post-to-release-channel
+        run: echo "SLACK_CHANNEL=${{ vars.SF_SLACK_RELEASE_CHANNEL_ID }}" >> $GITHUB_ENV
+      # Set Sync Channel
+      # -----------------------------------------------------
+      - name: ${{ inputs.post-to-sync-channel && '✅' || '🔘' }} Post to Sync Channel
+        if: inputs.post-to-sync-channel
+        run: echo "SLACK_CHANNEL=${{ vars.SF_SLACK_SYNC_CHANNEL_ID }}" >> $GITHUB_ENV
+      # Set Review Channel
+      # -----------------------------------------------------
+      - name: ${{ inputs.post-to-review-channel && '✅' || '🔘' }} Post to Review Channel
+        if: inputs.post-to-review-channel
+        run: echo "SLACK_CHANNEL=${{ vars.SF_SLACK_REVIEW_CHANNEL_ID }}" >> $GITHUB_ENV
+      # Set Custom Channel
+      # -----------------------------------------------------
+      - name: ${{ inputs.custom-channel-id != '' && '✅' || '🔘' }} Post to custom channel
+        if: inputs.custom-channel-id != ''
+        run: echo "SLACK_CHANNEL=${{ inputs.custom-channel-id }}" >> $GITHUB_ENV
+
+      # Post to Slack
+      - name: Post to Slack
+        id: slack
+        if: inputs.blocks != '' || inputs.attachment_type != '' || inputs.text != ''
+        uses: slackapi/slack-github-action@v2
+        with:
+          method: ${{ inputs.update_ts != '' && 'chat.update' || 'chat.postMessage' }}
+          token: ${{ secrets.SF_SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ env.SLACK_CHANNEL }}
+            ${{ inputs.blocks && env.blocks || ''}}
+            ${{ inputs.attachment_type && env.attachments || ''}}
+            ${{ inputs.text && env.text || ''}}
+            ${{ inputs.sender_name && env.username || ''}}
+            ${{ inputs.sender_icon && env.icon_url || ''}}
+            ${{ inputs.unfurl_links && env.unfurl_links || ''}}
+            ${{ inputs.unfurl_media && env.unfurl_media || ''}}
+            ${{ inputs.update_ts && env.ts || ''}}
+            ${{ inputs.thread_ts && env.thread_ts || ''}}
+            ${{ inputs.reply_broadcast && env.reply_broadcast || ''}}
+        env:
+          blocks: "blocks: ${{ inputs.blocks || '[]' }}"
+          attachments: "attachments: ${{ inputs.attachment_type == 'in_progress' && env.SLACK_ATTACHMENT_IN_PROGRESS || inputs.attachment_type == 'completed' && env.SLACK_ATTACHMENT_COMPLETED || inputs.attachment_type == 'failed' && env.SLACK_ATTACHMENT_FAILED || '' }}"
+          text: "text: ${{ inputs.text }}"
+          username: "username: ${{ inputs.sender_name }}"
+          icon_url: "icon_url: ${{ inputs.sender_icon }}"
+          unfurl_links: "unfurl_links: ${{ inputs.unfurl_links }}"
+          unfurl_media: "unfurl_media: ${{ inputs.unfurl_media }}"
+          ts: "ts: ${{ inputs.update_ts }}"
+          thread_ts: "thread_ts: ${{ inputs.thread_ts }}"
+          reply_broadcast: "reply_broadcast: ${{ inputs.reply_broadcast }}"
+
+      # Format Slack Thread ID
+      - name: Format Slack Thread ID
+        if: steps.slack.outputs.ts != ''
+        run: echo "THREAD_TS=$(echo '${{ steps.slack.outputs.ts }}' | sed 's/\.//')" >> $GITHUB_ENV
+
+      # Format Slack Thread ID
+      - name: Format Slack Thread ID
+        if: steps.slack.outputs.ts != ''
+        run: |
+          echo "SLACK_TYPE=${{ inputs.update_ts != '' && 'Updated a post' || inputs.thread_ts != '' && 'Created a comment' || 'Created a post' }}" >> $GITHUB_ENV
+
+      # Remove Reactions
+      - name: Remove Reactions
+        if: inputs.remove_reactions && inputs.thread_ts != ''
+        run: |
+          curl -s -L 'https://slack.com/api/reactions.remove' -H 'Authorization: Bearer ${{ secrets.SF_SLACK_BOT_TOKEN }}' -d 'channel=${{ env.SLACK_CHANNEL }}' -d 'name=white_check_mark' -d 'timestamp=${{ inputs.thread_ts }}'
+          curl -s -L 'https://slack.com/api/reactions.remove' -H 'Authorization: Bearer ${{ secrets.SF_SLACK_BOT_TOKEN }}' -d 'channel=${{ env.SLACK_CHANNEL }}' -d 'name=x' -d 'timestamp=${{ inputs.thread_ts }}'
+          curl -s -L 'https://slack.com/api/reactions.remove' -H 'Authorization: Bearer ${{ secrets.SF_SLACK_BOT_TOKEN }}' -d 'channel=${{ env.SLACK_CHANNEL }}' -d 'name=grey_question' -d 'timestamp=${{ inputs.thread_ts }}'
+
+      # React to Post
+      - name: React to Post
+        if: inputs.reaction_name != '' && inputs.thread_ts != ''
+        run: |
+          curl -s -L 'https://slack.com/api/reactions.add' -H 'Authorization: Bearer ${{ secrets.SF_SLACK_BOT_TOKEN }}' -d 'channel=${{ env.SLACK_CHANNEL }}' -d 'name=${{ inputs.reaction_name }}' -d 'timestamp=${{ inputs.thread_ts }}'
+
+    outputs:
+      thread-ts: ${{ steps.slack.outputs.ts }}

@@ -1,0 +1,42 @@
+{
+	"trailingComma": "none",
+	"printWidth": 200,
+	"singleQuote": true,
+	"tabWidth": 4,
+	"useTabs": false,
+	"plugins": ["prettier-plugin-apex", "@prettier/plugin-xml"],
+	"overrides": [
+		{
+			"files": "**/lwc/**/*.html",
+			"options": {
+				"parser": "lwc"
+			}
+		},
+		{
+			"files": "*.yml",
+			"options": {
+				"useTabs": false,
+				"tabWidth": 2
+			}
+		},
+		{
+			"files": "*.{cmp,page,component}",
+			"options": {
+				"parser": "html"
+			}
+		},
+		{
+			"files": "*.xml",
+			"options": {
+				"xmlWhitespaceSensitivity": "preserve",
+				"printWidth": 2000
+			}
+		},
+		{
+			"files": "*.json",
+			"options": {
+				"printWidth": 80
+			}
+		}
+	]
+}

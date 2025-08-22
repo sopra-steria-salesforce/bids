@@ -1,0 +1,60 @@
+name: '[Subflow] Label'
+on:
+  workflow_call:
+    inputs:
+      label:
+        type: string
+      remove:
+        type: boolean
+        default: false
+      add_rerun_validation_label:
+        type: boolean
+        default: false
+      add_recreate_scratch_org_label:
+        type: boolean
+        default: false
+      pull_or_issue_number:
+        type: number
+        required: true
+      useAppToken:
+        type: boolean
+        default: true
+jobs:
+  add-label:
+    name: label
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+
+      - name: 'Add label: ${{ inputs.label }}'
+        if: inputs.label && inputs.remove == false
+        run: gh api --silent --method POST /repositories/${{ github.repository_id }}/issues/${{ inputs.pull_or_issue_number }}/labels -f "labels[]=${{ inputs.label }}"
+        env:
+          GH_TOKEN: ${{ inputs.useAppToken && steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}
+
+      - name: 'Remove label: ${{ inputs.label }}'
+        if: inputs.label && inputs.remove
+        run: gh api --silent --method DELETE /repositories/${{ github.repository_id }}/issues/${{ inputs.pull_or_issue_number }}/labels/${{ inputs.label }}"
+        env:
+          GH_TOKEN: ${{ inputs.useAppToken && steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}
+
+      - name: Add 'recreate-scratch-org' label
+        if: inputs.add_recreate_scratch_org_label
+        run: gh api --silent --method POST /repositories/${{ github.repository_id }}/issues/${{ inputs.pull_or_issue_number }}/labels -f "labels[]=recreate-scratch-org"
+        env:
+          GH_TOKEN: ${{ inputs.useAppToken && steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}
+
+      - name: Add 'rerun-validation' label
+        if: inputs.add_rerun_validation_label
+        run: gh api --silent --method POST /repositories/${{ github.repository_id }}/issues/${{ inputs.pull_or_issue_number }}/labels -f "labels[]=rerun-validation"
+        env:
+          GH_TOKEN: ${{ inputs.useAppToken && steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}

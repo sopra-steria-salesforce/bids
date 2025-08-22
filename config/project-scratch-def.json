@@ -1,0 +1,29 @@
+{
+	"orgName": "Your Company",
+	"edition": "Enterprise",
+	"adminEmail": "test@example.com",
+	"features": ["ProcessBuilder", "API", "ServiceCloud", "ServiceUser"],
+	"country": "NO",
+	"language": "en_US",
+	"settings": {
+		"emailAdministrationSettings": {
+			"enableEnhancedEmailEnabled": true
+		},
+		"knowledgeSettings": {
+			"enableKnowledge": true,
+			"enableLightningKnowledge": true
+		},
+		"languageSettings": {
+			"enableTranslationWorkbench": true
+		},
+		"lightningExperienceSettings": {
+			"enableS1DesktopEnabled": true
+		},
+		"pathAssistantSettings": {
+			"pathAssistantEnabled": true
+		},
+		"userManagementSettings": {
+			"permsetsInFieldCreation": true
+		}
+	}
+}

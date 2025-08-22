@@ -1,0 +1,140 @@
+name: '[Subflow] Promote Package'
+on:
+  workflow_call:
+    inputs:
+      PACKAGE_ID:
+        required: true
+        type: string
+      TAG:
+        required: true
+        type: string
+    outputs:
+      shouldPromote:
+        value: ${{ jobs.check-promotion.outputs.shouldPromote }}
+jobs:
+  check-promotion:
+    name: Check Promotion
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sopra-steria-salesforce/sf-cli-setup@v1
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ vars.SF_PROD_USERNAME }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+          set-default-org: true
+
+      - name: Query Released Packages
+        run: sf data query --query "${{ env.QUERY }}" --use-tooling-api --json | jq -r '.result.totalSize' > totalSize
+        env:
+          QUERY: SELECT COUNT() FROM Package2Version WHERE SubscriberPackageVersionId = '${{ inputs.PACKAGE_ID }}' AND IsReleased = TRUE
+
+      - name: Check if promoted
+        id: check-promotion-step
+        run: echo "shouldPromote=$(if [ $(cat totalSize) -eq 0 ]; then echo true; else echo false; fi)" >> $GITHUB_OUTPUT
+
+      - run: echo "::notice::shouldPromote is true"
+        if: fromJSON(steps.check-promotion-step.outputs.shouldPromote)
+      - run: echo "::notice::shouldPromote is false (already promoted)"
+        if: fromJSON(steps.check-promotion-step.outputs.shouldPromote) == false
+
+    outputs:
+      shouldPromote: ${{ steps.check-promotion-step.outputs.shouldPromote }}
+
+  # ################################################################### #
+
+  promote-package:
+    name: Package
+    runs-on: ubuntu-latest
+    needs: check-promotion
+    permissions:
+      contents: read
+      id-token: write
+    if: fromJSON(needs.check-promotion.outputs.shouldPromote)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sopra-steria-salesforce/sf-cli-setup@v1
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ vars.SF_PROD_USERNAME }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+          set-default-dev-hub: true
+
+      # Promote package
+      - name: Promote package
+        run: sf package version promote --package ${{ inputs.PACKAGE_ID }} --target-dev-hub ${{ vars.SF_PROD_USERNAME }} --no-prompt
+
+  # ################################################################### #
+
+  update-version-number:
+    name: Update version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    needs: check-promotion
+    if: fromJSON(needs.check-promotion.outputs.shouldPromote)
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set Main Branch
+        run: |
+          echo "MAIN_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')" >> $GITHUB_ENV
+
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.MAIN_BRANCH }}
+          token: ${{ steps.generate_token.outputs.token }}
+
+      # Update version number
+      - name: Update version number
+        uses: sopra-steria-salesforce/sf-unlocked-package-version-updater@v2
+
+      # git commit and push
+      - uses: fregante/setup-git-user@v2
+      - run: git add sfdx-project.json && git commit -m "[CI] Updated to new version number $(cat sfdx-project.json | jq '.packageDirectories | map(select(.package != null))[0].versionNumber' -r | sed 's/.\{5\}$//')"
+      - run: git push origin HEAD:${{ env.MAIN_BRANCH }}
+
+  # ################################################################### #
+
+  update-release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get New Release Name
+        run: echo "name=$(echo ${{ inputs.TAG }} | sed 's|\(.*\)\..*|\1|')" >> $GITHUB_OUTPUT
+        id: release
+
+      - name: Get Release Body
+        run: gh api /repositories/${{ github.repository_id }}/releases --jq '[.[] | select(.tag_name == "${{ inputs.TAG }}" )][0].body' >> body.md.old
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trim Release Body
+        run: sed '/REMOVE_START/,/REMOVE_STOP/d' body.md.old > body.md
+
+      - uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          allowUpdates: true
+          prerelease: false # will make the existing prerelease into a full release
+          makeLatest: true
+          tag: ${{ inputs.TAG }}
+          name: ${{ steps.release.outputs.name }} # updates name by removing the build number and "(beta)"
+          bodyFile: body.md

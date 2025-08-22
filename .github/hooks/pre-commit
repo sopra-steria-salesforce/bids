@@ -1,0 +1,31 @@
+#!/bin/bash
+
+FILES=$(git diff --cached --name-only --diff-filter=ACMR | sed 's| |\\ |g')
+if [ -n "$FILES" ]; then
+  # Prettify all selected files
+  npm run precommit "$FILES"
+  # Add back the modified/prettified files to staging
+  git add "$FILES"
+fi
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+REGEX="^(cleanup\/.+|sync\/.+)|^(dev|preprod|main|master|test|CI\/package-version-update)|^((feature|bug|fix|docs|refactor|test)\/(FKP|SPESP)-[0-9]+(-|_)([A-z]|[0-9]|-|_)+)$"
+
+if ! [[ $BRANCH =~ $REGEX ]]; then
+	echo ""
+	echo "|-------------------------------------------|"
+	echo "|        Branch name is not correct         |"
+	echo "|-------------------------------------------|"
+	echo "| Use only (A-z), (0-9) and (- _ /)         |"
+	echo "| Use format 'feature/FKP-123-your-feature' |"
+	echo "|            'refactor/*******************' |"
+	echo "|            'docs/***********************' |"
+	echo "|            'test/***********************' |"
+	echo "|            'fix/************************' |"
+	echo "|            'bug/************************' |"
+	echo "|-------------------------------------------|"
+  
+  echo && exit 1
+fi
+
+exit 0

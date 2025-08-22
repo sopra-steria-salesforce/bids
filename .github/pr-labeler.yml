@@ -1,0 +1,8 @@
+enhancement: feature/*
+bug: ['fix/*', 'bug/*']
+documentation: docs/*
+refactor: refactor/*
+test: test/*
+cleanup: cleanup/*
+sync: sync/*
+CI: CI/*

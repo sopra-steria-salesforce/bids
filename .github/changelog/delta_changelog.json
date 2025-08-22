@@ -1,0 +1,19 @@
+{
+	"categories": [
+		{
+			"title": "## 😎 What's New",
+			"labels": [
+				"feature",
+				"enhancement",
+				"fix",
+				"bug",
+				"test",
+				"documentation",
+				"refactor"
+			]
+		}
+	],
+	"template": "#{{CHANGELOG}}",
+	"pr_template": "- #{{TITLE}} ([#{{NUMBER}}](#{{URL}}) — [#{{AUTHOR}}](https://github.com/#{{AUTHOR}}))",
+	"base_branches": ["main"]
+}

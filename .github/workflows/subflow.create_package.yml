@@ -1,0 +1,171 @@
+name: '[Subflow] Create Package'
+on:
+  workflow_call:
+    inputs:
+      useSnapshot:
+        description: 'Use Snapshots'
+        required: false
+        default: false
+        type: boolean
+      skipValidation:
+        description: 'Skip Validation'
+        required: false
+        default: false
+        type: boolean
+    outputs:
+      successfullyCreatedPackage:
+        value: ${{ jobs.create-package.outputs.successfullyCreatedPackage }}
+      packageId:
+        value: ${{ jobs.create-package.outputs.packageId }}
+      newVersionTag:
+        value: ${{ jobs.create-package.outputs.newVersionTag }}
+      codeCoverage:
+        value: ${{ jobs.create-package.outputs.codeCoverage || 0 }}
+env:
+  CONFIG_FILE: ./config/project-scratch-def.json
+  SNAPSHOT_CONFIG_FILE: ./config/project-scratch-def-snapshot.json
+jobs:
+  create-package:
+    name: create
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sopra-steria-salesforce/sf-cli-setup@v1
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ vars.SF_PROD_USERNAME }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+          set-default-dev-hub: true
+
+      - name: Set Environment Variables
+        uses: falti/dotenv-action@v1.1.4
+        with:
+          path: .env/${{ (github.ref_name == 'master' || github.ref_name == 'main') && 'prod' || github.ref_name }} # imports .env/prod for master/main, otherwise .env/branchname (e.g., .env/preprod)
+          ensure-exists: false
+          export-variables: true
+          keys-case: bypass
+
+      # Get Config File
+      - name: Get Config File
+        id: config
+        run: |
+          if [[ -f ${{ env.SNAPSHOT_CONFIG_FILE }} && ${{ inputs.useSnapshot }} = true ]]; then
+            snapshotStatus=$(sf org get snapshot --snapshot full_snapshot --json | jq -r '.result.Status')
+            if [ $snapshotStatus = 'Active' ]; then
+              echo "file=${{ env.SNAPSHOT_CONFIG_FILE }}" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
+          echo "file=${{ env.CONFIG_FILE }}" >> $GITHUB_OUTPUT
+
+      # Create main package version
+      - name: Create main package version
+        if: github.ref_name == 'master' || github.ref_name == 'main'
+        run: |
+          packageName=$(cat sfdx-project.json | jq '.packageDirectories | map(select(.package != null))[0].package' -r)
+          sf package:version:create \
+            --definition-file ${{ steps.config.outputs.file }} \
+            --package $packageName \
+            --installation-key ${{ secrets.SF_PACKAGE_KEY }} \
+            --wait 90 \
+            --json \
+            ${{ inputs.skipValidation && '--skip-validation' || '--code-coverage' }} \
+            | tee output
+
+      # Create package version on a branch for preprod
+      - name: Create package version on a branch for preprod
+        if: github.ref_name != 'master' && github.ref_name != 'main'
+        run: |
+          packageName=$(cat sfdx-project.json | jq '.packageDirectories | map(select(.package != null))[0].package' -r)
+          sf package:version:create \
+            --definition-file ${{ steps.config.outputs.file }} \
+            --package $packageName \
+            --installation-key ${{ secrets.SF_PACKAGE_KEY }} \
+            --wait 60 \
+            --json \
+            --branch ${{ github.ref_name }} \
+            ${{ inputs.skipValidation && '--skip-validation' || '--code-coverage' }} \
+            | tee output
+
+      # Check Warnings
+      - name: Check Warnings
+        run: |
+          cat output | jq -c -r '.warnings[]' | while read -r warning; do
+            echo "::warning::$warning"
+          done
+
+      # Check Errors
+      - name: Check Errors
+        id: check-error
+        run: |
+          if [ $(cat output | jq '.status') != "0" ]; then
+
+            #* log to github action log
+            echo "::error::❌ PACKAGE CREATION FAILED"
+            cat output | jq -c -r '.result.Error[]' | while read -r error; do
+              echo "::error::$error"
+            done
+            cat output | jq -c -r '.message' | while read -r error; do
+              echo "::error::$error"
+            done  
+            echo "successfullyCreatedPackage=false" >> $GITHUB_OUTPUT
+
+            #* cause an error in github, while saving the output
+            exit 125
+          fi
+          echo "successfullyCreatedPackage=true" >> $GITHUB_OUTPUT
+
+      # Fetch Package Creation Info
+      - name: Fetch Package Creation Info
+        id: package-version-info
+        continue-on-error: true
+        run: |
+          packageId=$(cat output | jq -r '.result.SubscriberPackageVersionId')
+          echo "::notice::📦 Package ID: $packageId"
+
+          report=$(sf package:version:report -p $packageId --json)
+          echo "packageId=$packageId" >> $GITHUB_OUTPUT
+
+          #* new version tag
+          versionNumber=$(echo $report | jq -r '.result.Name')
+          betaVersionNumber=$(echo $report | jq -r '.result.BuildNumber')
+          newVersionTag="v$versionNumber.$betaVersionNumber"
+          echo "newVersionTag=$newVersionTag" >> $GITHUB_OUTPUT
+          echo "::notice::🏷️ New Version Tag: v$versionNumber.$betaVersionNumber"
+
+          echo "codeCoverage=$(echo $report | jq -r '.result.CodeCoverage?.apexCodeCoveragePercentage' )" >> $GITHUB_OUTPUT
+          echo "successfullyCreatedPackage=true" >> $GITHUB_OUTPUT
+
+      # Get Repo Name
+      - uses: MariachiBear/get-repo-name-action@v1.3.0
+        if: failure()
+        id: repo-name
+
+    outputs:
+      successfullyCreatedPackage: ${{ steps.check-error.outputs.successfullyCreatedPackage }}
+      packageId: ${{ steps.package-version-info.outputs.packageId }}
+      newVersionTag: ${{ steps.package-version-info.outputs.newVersionTag }}
+      codeCoverage: ${{ steps.package-version-info.outputs.codeCoverage || 0 }}
+      repo_name: ${{ steps.repo-name.outputs.repository-name }}
+
+  slack-update:
+    name: slack status if package failed
+    needs: create-package
+    if: failure() && vars.SF_SLACK_ENABLED == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.slack.yml
+    secrets: inherit
+    with:
+      job_name: slack report package error
+      post-to-deployment-channel: true
+      blocks: '[{"type":"header","text":{"type":"plain_text","text":"[${{ needs.create-package.outputs.repo_name }}] Package Creation Failed in ${{ github.ref_name }}","emoji":true}},{"type":"section","fields":[{"type":"mrkdwn","text":"*Status*\n🔴 Failed to create package\n<!channel>, please fix."},{"type":"mrkdwn","text":"*Created By*\n<https://github.com/${{ github.actor }}|${{ github.actor }}>"}],"accessory":{"type":"overflow","options":[{"text":{"type":"plain_text","text":"😵 View Error"},"url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"},{"text":{"type":"plain_text","text":"🖥️ View Commit"},"url":"https://github.com/${{ github.repository }}/commit/${{ github.sha }}"}]}}]'
+      text: ${{ needs.create-package.outputs.repo_name }} failed to build
+      # view blocks in https://app.slack.com/block-kit-builder

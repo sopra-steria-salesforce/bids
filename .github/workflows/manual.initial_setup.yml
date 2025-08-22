@@ -1,0 +1,414 @@
+name: '[X] Initialise/Update Repo'
+on:
+  workflow_dispatch:
+    inputs:
+      set-labels:
+        type: boolean
+        default: true
+      set-repo-settings:
+        type: boolean
+        default: true
+      set-rulesets:
+        type: boolean
+        default: true
+      create-environments:
+        type: boolean
+        default: true
+      create-release:
+        type: boolean
+        default: true
+      create-package:
+        type: boolean
+        default: true
+      create-branches:
+        type: boolean
+        default: true
+jobs:
+  # -------------------------------------------------------------------------- #
+  #                                   Labels                                   #
+  # -------------------------------------------------------------------------- #
+
+  set-labels:
+    name: Set Labels
+    if: inputs.set-labels
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: enhancement
+            color: 0E8A16
+          - name: bug
+            color: d73a4a
+          - name: documentation
+            color: 0075ca
+          - name: refactor
+            color: 7057ff
+          - name: test
+            color: ffd059
+          - name: cleanup
+            color: 8be06e
+          - name: sync
+            color: ccde45
+          - name: CI
+            color: 092b54
+          - name: disable-review-post
+            color: D93F0B
+            description: Disable review post when validating PRs.
+          - name: disable-snapshot
+            color: D93F0B
+            description: Disable snapshot scratch orgs when validating PRs.
+          - name: auto-deploy
+            color: D93F0B
+            description: Automatically deploy package (if successfull) to prod when PR is merged
+          - name: rerun-validation
+            color: FBCA04
+            description: Used on pull requests to re-run the validation script (unless already running)
+          - name: recreate-scratch-org
+            color: FBCA04
+            description: Used on pull requests to indicate on validations that a new scratch org should be created
+            #! max 100 characters on description (learned that the hard way...)
+    steps:
+      # Try to create first, then update if it already exists.
+      - name: Create
+        run: |
+          gh api --silent --method POST /repositories/${{ github.repository_id }}/labels \
+            -f name='${{ matrix.name }}' \
+            -f description='${{ matrix.description || format('Used for {0}, which are automatically added if a branch prefix is added', matrix.name) }}' \
+            -f color='${{ matrix.color }}' || true #! ignore if already exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Should either exists from before, or be created in the previous step
+      - name: Update
+        run: |
+          gh api --silent --method PATCH /repositories/${{ github.repository_id }}/labels/${{ matrix.name }} \
+            -f description='${{ matrix.description || format('Used for {0}, which are automatically added if a branch prefix is added', matrix.name) }}' \
+            -f color='${{ matrix.color }}'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # -------------------------------------------------------------------------- #
+  #                                  Settings                                  #
+  # -------------------------------------------------------------------------- #
+
+  set-repo-settings:
+    name: Set Repo Settings
+    if: inputs.set-repo-settings
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - name: Set Settings
+        run: |
+          gh api --method PATCH /repositories/${{ github.repository_id }} \
+            -f has_issues=false \
+            -f has_wiki=false \
+            -f allow_auto_merge=true
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+
+  # -------------------------------------------------------------------------- #
+  #                                  Rulesets                                  #
+  # -------------------------------------------------------------------------- #
+
+  delete-old-rulesets:
+    name: Delete Old rulesets
+    if: inputs.set-rulesets
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - name: Delete Existing
+        run: |
+          data=$(gh api -H "Accept: application/vnd.github+json" /repositories/${{ github.repository_id }}/rulesets)
+          echo "$data" | jq -c '.[]' | while read -r element; do
+              id=$(echo $element | jq -r '.id')
+              name=$(echo $element | jq -r '.name')
+              gh api --silent --method DELETE -H "Accept: application/vnd.github+json" /repositories/${{ github.repository_id }}/rulesets/$id
+              echo "::notice::Deleted rulset '$name'"
+          done
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+
+  create-rulesets:
+    name: Create rulesets
+    needs: delete-old-rulesets
+    permissions: write-all
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rule:
+          - default_protection
+          - require_approvers
+          - require_up_to_date_branch
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - name: Creating Rule '${{ matrix.rule }}'
+        # TODO: add input to change the bot
+        run: |
+          rule=$(cat ./.github/rulesets/${{ matrix.rule }}.json)
+          rule=$(echo $rule | jq '.bypass_actors[] |= if .actor_type == "Integration" then .actor_id = ${{ secrets.SF_GITHUB_BOT_APP_ID }} else . end')
+          echo $rule | gh api --silent --method POST -H "Accept: application/vnd.github+json" /repositories/${{ github.repository_id }}/rulesets --input -
+          echo "::notice::Created rule ${{ matrix.rule }}"
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+
+  # -------------------------------------------------------------------------- #
+  #                            Create Environments                             #
+  # -------------------------------------------------------------------------- #
+
+  delete-old-environments:
+    name: Delete Old Environments
+    if: inputs.create-environments
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Generate GitHub token
+        id: generate_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - name: Delete Existing
+        run: |
+          data=$(gh api -H "Accept: application/vnd.github+json" /repositories/${{ github.repository_id }}/environments)
+          echo "$data" | jq -c '.environments[]' | while read -r element; do
+              name=$(echo $element | jq -r '.name')
+              gh api --silent --method DELETE -H "Accept: application/vnd.github+json" /repositories/${{ github.repository_id }}/environments/$name
+              echo "::notice::Deleted environment '$name'"
+          done
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+  create-environments:
+    name: Create Environments
+    needs: delete-old-environments
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - ENV: prod
+            SETTINGS: '{ "wait_timer": 15, "deployment_branch_policy": { "custom_branch_policies": false, "protected_branches": true }}'
+          - ENV: preprod
+            SETTINGS: '{ "deployment_branch_policy": { "custom_branch_policies": false, "protected_branches": true }}'
+          - ENV: sit
+            SETTINGS: '{ "deployment_branch_policy": { "custom_branch_policies": false, "protected_branches": true }}'
+    continue-on-error: true
+    steps:
+      - name: Generate GitHub token
+        id: generate_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - name: Create env '${{ matrix.ENV }}'
+        run: |
+          #! create environment
+          echo '${{ matrix.SETTINGS }}' | gh api --silent --method PUT -H "Accept: application/vnd.github+json" /repositories/${{ github.repository_id }}/environments/${{ matrix.ENV }} --input -
+          #! create environment variable SF_URL
+        # gh api --silent --method POST -H "Accept: application/vnd.github+json" /repositories/${{ github.repository_id }}/environments/${{ matrix.ENV }}/variables -f name='SF_URL' -f value='${{ matrix.SF_URL }}'
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+
+  # -------------------------------------------------------------------------- #
+  #                            Create First Release                            #
+  # -------------------------------------------------------------------------- #
+
+  create-release:
+    name: Create Release
+    if: inputs.create-release
+    permissions:
+      contents: write
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          tag: 'v0.1.0'
+          name: '0.1.0'
+          body: Init release
+          allowUpdates: true
+
+  # -------------------------------------------------------------------------- #
+  #                            Create First Package                            #
+  # -------------------------------------------------------------------------- #
+
+  check-if-package-exists:
+    name: Check if package exists
+    if: inputs.create-package
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - uses: actions/checkout@v4
+      - uses: MariachiBear/get-repo-name-action@v1.3.0
+        id: repo-name
+      - uses: sopra-steria-salesforce/sf-cli-setup@v1
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ vars.SF_PROD_USERNAME }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+          set-default-dev-hub: true
+      - name: Check if Package '${{ steps.repo-name.outputs.repository-name }}' exists
+        id: check-package
+        run: |
+          data=$(sf package list --json | jq -r  '.result | map(select(.Name == "${{ steps.repo-name.outputs.repository-name }}"))')
+          if [ "$data" = "[]" ]; then
+            echo "createNewPackage=true" >> $GITHUB_OUTPUT
+          else
+            echo "createNewPackage=false" >> $GITHUB_OUTPUT
+          fi
+    outputs:
+      createNewPackage: ${{ steps.check-package.outputs.createNewPackage }}
+
+  create-package:
+    name: Create Package
+    needs: check-if-package-exists
+    if: needs.check-if-package-exists.outputs.createNewPackage == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.generate_token.outputs.token }} # allows push to master
+      - uses: MariachiBear/get-repo-name-action@v1.3.0
+        id: repo-name
+
+      # Set commiter
+      - uses: fregante/setup-git-user@v2
+
+      # Install & Authorize sf cli
+      - uses: sopra-steria-salesforce/sf-cli-setup@v1
+        with:
+          sf-cli-version: 2.98.6
+          username: ${{ vars.SF_PROD_USERNAME }}
+          client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
+          set-default-dev-hub: true
+
+      # Install npm dependencies
+      - uses: actions/setup-node@v4
+        with:
+          cache: npm # fetch cache of packages to install
+          token: ${{ steps.generate_token.outputs.token }} # needs custom token to avoid rate limit
+          node-version: 20
+      - run: npm ci --prefer-offline --no-audit # force offline installs for quicker run
+
+      # Create Package
+      - name: Create Package
+        run: sf package:create --package-type Unlocked --path force-app --name ${{ steps.repo-name.outputs.repository-name }}
+
+      # Remove versionName
+      - name: Remove versionName tag
+        run: json=$(cat sfdx-project.json | jq 'del(.packageDirectories[0].versionName)') && echo $json > sfdx-project.json
+
+      # Commit Changes
+      - run: git add sfdx-project.json && git commit -m "[CI] Created sf package"
+
+      # Create Package Version
+      - name: Create Package Version
+        id: create-package
+        run: |
+          sf package:version:create --definition-file config/project-scratch-def.json --wait 90 --code-coverage --installation-key ${{ secrets.SF_PACKAGE_KEY }} --package ${{ steps.repo-name.outputs.repository-name }} --json | tee output
+          echo "packageId=$(cat output | jq -r '.result.SubscriberPackageVersionId')" >> $GITHUB_OUTPUT
+          rm output
+
+      # Commit Changes
+      - run: git add sfdx-project.json && git commit -m "[CI] Created sf package version"
+
+      # Promote Package Version
+      - run: sf package:version:promote --package ${{ steps.create-package.outputs.packageId }} --no-prompt
+
+      # Delete tmp files
+      - run: git checkout -- ./sfdx-project.json
+
+      # Update version number
+      - name: Update version number
+        uses: sopra-steria-salesforce/sf-unlocked-package-version-updater@v2
+
+      - run: cat sfdx-project.json
+
+      # Commit Changes
+      - run: git add sfdx-project.json && git commit -m "[CI] Updated to new version number 0.2.0"
+
+      # git push
+      - run: git push origin HEAD:${{ github.ref_name }}
+
+  # -------------------------------------------------------------------------- #
+  #                               Create Branches                              #
+  # -------------------------------------------------------------------------- #
+
+  create-branches:
+    name: Create Branches
+    if: inputs.create-branches
+    needs: create-package
+    permissions:
+      contents: write
+      id-token: write
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        branch: [preprod]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - name: Create branch
+        uses: peterjgrainger/action-create-branch@v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+        with:
+          branch: ${{ matrix.branch }}

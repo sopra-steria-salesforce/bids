@@ -1,0 +1,205 @@
+name: '[PR] Check'
+on:
+  pull_request:
+    types: [opened, edited]
+env:
+  BRANCH_PREFIXES: (feature|bug|fix|docs|refactor|test) #! additions here are NOT enough (do a global search for e.g. refactor)
+  BRANCHES: (FKP|SPESP) # changes here are enough
+jobs:
+  init:
+    name: init
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    if: always() && github.event.action == 'opened'
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+
+      # Set label on PR
+      - uses: TimonVS/pr-labeler-action@v5
+        continue-on-error: true
+        with:
+          configuration-path: .github/pr-labeler.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Post Command Prompts
+      - name: Post Command Prompts
+        continue-on-error: true
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            # Commands
+
+            ## During Validation
+
+            - `/review-post disable` or `/review-post enable` (enabled by default)
+                - Decide if code reviews are posted to Slack upon successful validation
+            - `/auto-deploy` (NOT IMPLEMENTED YET, nag the architects to implement it)
+                - Instantly deploy the changes to production after merging, if package creation is successful
+
+            ## After Validation
+
+            These commands only work when the validation is not currently running (either wait or cancel it)
+
+            - `/snapshot disable` or `/snapshot enable` (enabled by default)
+                - A new workflow run will start and create a new scratch either with or without using a snapshot
+            - `/retry`
+                - Retry the validation with a **FRESH** scratch org (the old is deleted)
+                - If you just need a normal retry (e.g., timeouts), use the GitHub retry functionality instead
+            - `/login`
+                - Get login to the scratch org (only allowed when all checks are green, and used for code reviews)
+
+      # Post Jira ID
+      - name: Get Jira ID
+        continue-on-error: true
+        run: echo "JIRA_ID=$(echo '${{ github.head_ref }}' | grep -Po '\w+-\d+')" >> $GITHUB_ENV
+
+      # Add Jira-description to PR body
+      - name: Update PR body with Jira description
+        uses: johnforeland/jira-description-to-github-pr@v1
+        continue-on-error: true
+        if: env.JIRA_ID
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          jira-token: ${{ secrets.SF_JIRA_ACCESS_TOKEN }}
+          jira-ticket-id: ${{ env.JIRA_ID }}
+          jira-base-url: ${{ vars.SF_JIRA_URL }}
+
+  # ################################################################### #
+
+  branch-naming-rules:
+    name: branch name
+    permissions:
+      contents: read
+      pull-requests: write
+    if: always() && github.event.action == 'opened'
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch name
+        uses: deepakputhraya/action-branch-name@master
+        with:
+          regex: '^(cleanup\/.+|sync\/.+|CI\/.+)|(dev|preprod|main|master|test)|(${{ env.BRANCH_PREFIXES }}\/${{ env.BRANCHES }}-[0-9]+(-|_)([A-z]|[0-9]|-|_)+)$'
+          # must be either:
+          # cleanup/my-cleanup
+          # dev
+          # preprod
+          # test
+          # master
+          # main
+          # CI/package-version-update
+          # feature/FKP-22-my-feature
+
+      # Post Error Comment
+      - name: Post Error Comment
+        if: failure()
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            # ❌ Error — Incorrect Branch Name
+
+            The branch name must begin with `prefix/JIRA_PROJECT-NUMBER` and end with a name describing the change. For example: `feature/TEAMSAK-123-my-feature`.
+
+            - Allowed prefixes (must be lowercase)
+              - `feature`
+              - `refactor`
+              - `docs`
+              - `test`
+              - `fix`
+              - `bug`
+
+            - Allowed Jira-projects (must be uppercase)
+              - `FKP`
+              - `SPESP`
+
+            - Branch description
+              - The part of the branch after the Jira ticket 
+              - Must contain only letters, numbers, `-` and `_`
+              - No Æ, Ø or Å
+              - No special characters (! or #, etc)
+
+  # ################################################################### #
+
+  validate-pr-title:
+    name: title
+    permissions:
+      contents: read
+      pull-requests: write
+    if: always() && (github.event.action == 'opened' || github.event.changes.title.from)
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      # When the PR consists of multiple commits, the title is based on the branch name. #* E.g. feature/FKP-123-my-feature → Feature/FKP 123 my feature
+      - run: echo "DEFAULT_TITLE=$(echo "${{ github.event.pull_request.title }}" | tr '[:upper:]' '[:lower:]' | grep -Pq '^${{ env.BRANCH_PREFIXES }}\/\w+\s\d+.+$' && echo true || echo false)" >> $GITHUB_ENV
+
+      # Test regex her https://playcode.io
+      - name: Remove Prefix and Jira ID from Branch Name
+        uses: frabert/replace-string-action@v2
+        if: fromJSON(env.DEFAULT_TITLE)
+        id: pr-title-with-dashes
+        with:
+          pattern: '^${{ env.BRANCH_PREFIXES }}/${{ env.BRANCHES }}-\d+(-|_|)' #! \d krever \\d i playcode.io, men her må det sendes inn \d. RegEx be RegExing.
+          string: ${{ github.head_ref }}
+          replace-with: ''
+
+      # Test regex her https://playcode.io
+      - name: Remove Dashes
+        uses: frabert/replace-string-action@v2
+        if: fromJSON(env.DEFAULT_TITLE)
+        id: pr-title
+        with:
+          pattern: '-'
+          string: ${{ steps.pr-title-with-dashes.outputs.replaced }}
+          replace-with: ' '
+          flags: 'g' # replace all occurances
+
+      # Update PR title if branch contains jira ticket
+      - name: Update PR Title from Branch Name
+        uses: the-wright-jamie/update-pr-info-action@v1.1.0
+        if: fromJSON(env.DEFAULT_TITLE)
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          head-branch-regex: '(${{ env.BRANCHES }}-[0-9]+)|(cleanup|sync|CI)'
+          lowercase-branch: false
+          title-insert-space: false
+          title-update-action: replace
+          title-template: '[%headbranch%] ${{ steps.pr-title.outputs.replaced }}'
+
+      # Add Jira Ticket to Existing PR title
+      - name: Add Jira Ticket to Existing PR title
+        uses: the-wright-jamie/update-pr-info-action@v1.1.0
+        if: fromJSON(env.DEFAULT_TITLE) == false
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          head-branch-regex: '(${{ env.BRANCHES }}-[0-9]+)|(cleanup|sync|CI)'
+          lowercase-branch: false
+          title-insert-space: true
+          title-update-action: prefix
+          title-template: '[%headbranch%]'
+
+      # Validate PR title
+      - name: Validate PR title
+        uses: deepakputhraya/action-pr-title@v1.0.2
+        with:
+          regex: '^\[((${{ env.BRANCHES }}-\d*)|(CLEANUP|SYNC|CI|))\].*$' # must be "[FKP-22] my feature", "[CLEANUP] my change" or "[CI] my change"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Post Error Comment
+      - name: Post Error Comment
+        if: failure()
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            # ❌ Error — Bad Pull Request title
+
+            All pull request names must begin with `[FKP-123] your feature here`.
+            This should normally be done automatically for you, if you named your branch correctly.

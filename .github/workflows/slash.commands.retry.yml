@@ -1,0 +1,25 @@
+name: '[Slash] Commands - Retry'
+
+on:
+  # Remove 'rerun-validation' label when pull request is closed
+  # Re-runs the validation workflow when the 'rerun-validation' label is added
+  pull_request_target:
+    types:
+      - labeled
+
+  # Remove 'rerun-validation' label when validation is completed
+  workflow_run:
+    workflows: '[PR] Validation' #! use the label of pr.validation.yml
+    types: completed
+jobs:
+  rerun-workflow:
+    name: validation
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - name: Re-run pull request workflows
+        uses: reitermarkus/rerun-workflow@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          once-label: rerun-validation
+          workflow: pr.validation.yml

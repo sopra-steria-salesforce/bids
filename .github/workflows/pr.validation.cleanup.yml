@@ -1,0 +1,69 @@
+name: '[PR] Validation (Cleanup)'
+on:
+  pull_request:
+    types: closed
+    paths-ignore:
+      - 'package.json'
+      - 'package-lock.json'
+concurrency:
+  group: validation-${{ github.base_ref }}-${{ github.head_ref }}
+  cancel-in-progress: true
+jobs:
+  cleanup:
+    name: Scratch Org
+    permissions:
+      contents: read
+      id-token: write
+      actions: write
+      issues: write
+      pull-requests: write
+    uses: ./.github/workflows/subflow.scratch_org.yml
+    secrets: inherit
+    with:
+      alwaysGetScratchOrg: false
+      deleteExistingScratchOrg: true
+      pr_number: ${{ github.event.number }}
+  delete-branch:
+    name: Delete Branch
+    permissions:
+      contents: write
+    if: github.event.pull_request.merged == true && contains(fromJSON('["master", "main"]'), github.base_ref)
+    runs-on: ubuntu-latest
+    steps:
+      - name: delete branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.git.deleteRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `heads/${context.payload.pull_request.head.ref}`,
+            })
+  update-code-review-post:
+    name: Update Code Review Status
+    runs-on: ubuntu-latest
+    if: vars.SF_SLACK_ENABLED == 'true' && contains(github.event.pull_request.labels.*.name, 'disable-review-post') == false && github.event.pull_request.merged == true
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - name: Trigger Job to Post Review
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          event-type: close-code-review-post
+          client-payload: |-
+            {
+              "head_ref": "${{ github.head_ref }}",
+              "base_ref": "${{ github.base_ref }}",
+              "status": "${{ env.STATUS }}",
+              "pr_number": "${{ github.event.number }}",
+              "actor": "${{ github.actor }}"
+            }
+        env:
+          STATUS: ${{ github.event.pull_request.merged && 'merged' || 'closed' }}

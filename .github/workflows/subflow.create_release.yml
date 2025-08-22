@@ -1,0 +1,110 @@
+name: '[Subflow] Create Release'
+on:
+  workflow_call:
+    inputs:
+      PACKAGE_ID:
+        required: true
+        type: string
+      NEW_VERSION_TAG:
+        required: true
+        type: string
+      CODE_COVERAGE:
+        required: true
+        type: number
+      SUCCESSFULLY_INSTALLED:
+        required: true
+        type: string
+jobs:
+  create-release:
+    name: create
+    permissions:
+      contents: write
+      actions: read
+      id-token: write
+      pull-requests: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # set release variables
+      - name: Set release fields
+        id: release
+        run: |
+          echo "codeCoverageColor=${{ inputs.CODE_COVERAGE >= 85 && 'green' || inputs.CODE_COVERAGE < 85 && 'red' }}" >> $GITHUB_OUTPUT
+          echo "sitStatus=${{ inputs.SUCCESSFULLY_INSTALLED == 'true' && 'builds' || 'failing' }}" >> $GITHUB_OUTPUT
+          echo "sitColor=${{ inputs.SUCCESSFULLY_INSTALLED == 'true' && 'green' || 'red' }}" >> $GITHUB_OUTPUT
+
+      # find the previous pre-release
+      - run: tag=$(gh api /repositories/${{ github.repository_id }}/releases --jq '.[0].tag_name') && echo "PREVIOUS_PRERELEASE=$tag" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # find the previous full release (non-draft and non-prerelease)
+      - run: tag=$(gh api /repositories/${{ github.repository_id }}/releases --jq '[.[] | select(.prerelease==false and .draft==false)][0].tag_name') && echo "PREVIOUS_RELEASE=$tag" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Generate changelog from commits
+      - name: Build Delta Changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        id: delta-changelog
+        with:
+          configuration: .github/changelog/delta_changelog.json
+          fromTag: ${{ env.PREVIOUS_PRERELEASE }}
+          toTag: ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Generate changelog from commits
+      - name: Build Full Changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        id: full-changelog
+        with:
+          configuration: .github/changelog/full_changelog.json
+          fromTag: ${{ env.PREVIOUS_RELEASE }}
+          toTag: ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Create Release
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: true
+          name: ${{ inputs.NEW_VERSION_TAG }} (beta)
+          tag: ${{ inputs.NEW_VERSION_TAG }}
+          removeArtifacts: true
+          body: |
+            <p>
+              <a href="https://github.com/${{ github.repository }}/actions/workflows/manual.deployment_tool.yml" alt="Deployment Tool">
+                <img src="https://img.shields.io/badge/Deploy-${{ inputs.NEW_VERSION_TAG }}-blue" /></a>
+              <a href="#sponsors" alt="Code Coverage">
+                <img src="https://img.shields.io/badge/Code_Coverage-${{ inputs.CODE_COVERAGE || 0 }}%25-${{ steps.release.outputs.codeCoverageColor }}" /></a>
+              <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" alt="SIT Status">
+                <img src="https://img.shields.io/badge/SIT-${{ steps.release.outputs.sitStatus }}-${{ steps.release.outputs.sitColor }}" /></a>
+            </p>
+            <p>
+              <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" alt="Logs">
+                <img src="https://img.shields.io/badge/Logs-111?logo=github" /></a>
+              <a href="https://github.com/${{ github.actor }}" alt="Initiator">
+                <img src="https://img.shields.io/badge/${{ github.actor }}-111?logo=github" /></a>
+            </p>
+
+            <!--REMOVE_START-->
+            ${{ steps.delta-changelog.outputs.changelog }}
+            <!--REMOVE_STOP-->
+
+            <!--REMOVE_START-->
+            <details><summary><h2>Full Changelog</h2></summary><p>
+            <!--REMOVE_STOP-->
+
+            ${{ steps.full-changelog.outputs.changelog }}
+            <!--REMOVE_START-->
+            </p></details>
+            <!--REMOVE_STOP-->
+
+            <h6>Package ID: ${{ inputs.PACKAGE_ID }}</h6>

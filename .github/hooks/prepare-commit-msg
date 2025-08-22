@@ -1,0 +1,27 @@
+#!/bin/bash
+
+echo && echo "Checking commit message naming convention"
+MESSAGE=$(cat $1) 
+
+# REGEX="^Update\s+([A-z]|.|-)+-meta.xml$"
+
+# if [[ $MESSAGE =~ $REGEX ]]; then
+#   echo
+#   echo "|--------------------------------------------------------------------------|"
+#   echo "|                                  ERROR                                   |"  
+#   echo "|--------------------------------------------------------------------------|"
+#   echo "| Commit message naming convention is not correct. You can't use           |"
+#   echo "| the default 'Update metadata.xml', write what you changed.               |"
+#   echo "|--------------------------------------------------------------------------|"
+  
+#   exit 1
+# fi
+
+TICKET=$(git rev-parse --abbrev-ref HEAD | grep -Eo '\w+-[0-9]+' | tr "[:lower:]" "[:upper:]")
+
+if [[ "$MESSAGE" == *"$TICKET"* ]]; then
+  echo "Ticket found in commit message. Skipping..." 
+  exit 0
+fi
+
+echo "[$TICKET] $MESSAGE" > $1

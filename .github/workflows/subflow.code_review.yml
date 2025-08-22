@@ -1,0 +1,196 @@
+name: '[Subflow] Code Review'
+on:
+  repository_dispatch:
+    types:
+      - post-code-review-post # comes from pr.validation.yml
+      - post-code-review-comment # comes from pr.code_review.yml
+      - close-code-review-post # comes from pr.validation.cleanup.yml
+env:
+  CACHE_FOLDER: slack_post
+  CACHE_FILE: thread_ts
+jobs:
+  # -------------------------------------------------------------------------- #
+  #                       Check if PR posts are disabled                       #
+  # -------------------------------------------------------------------------- #
+
+  code-review-check:
+    name: Check if PR posts are disabled
+    permissions:
+      issues: read
+      pull-requests: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if disabled
+        id: check-disabled
+        run: echo "disabled=$(gh api /repositories/${{ github.repository_id }}/issues/${{ github.event.client_payload.pr_number }}/labels | jq -c '[ . [] | select(.name | contains("disable-review-post")) ] != []')" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: 'echo "::notice::Code Review Posts Disabled: ${{ steps.check-disabled.outputs.disabled }}"'
+    outputs:
+      disabled: ${{ steps.check-disabled.outputs.disabled }}
+
+  # -------------------------------------------------------------------------- #
+  #                         Get Slack Thread from Cache                        #
+  # -------------------------------------------------------------------------- #
+
+  find-thread-ts-from-cache:
+    name: Get Slack Thread from Cache
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    # PR posts are not disabled
+    if: needs.code-review-check.outputs.disabled == 'false'
+    needs: code-review-check
+    runs-on: ubuntu-latest
+    steps:
+      # matches the cache job in the job 'upload-slack-thread-ts'
+      - uses: actions/cache/restore@v4
+        id: cache-thread-ts
+        with:
+          path: ${{ env.CACHE_FOLDER }}
+          key: slack-ts-pr-${{ github.event.client_payload.pr_number }}-${{ github.run_id }}
+          restore-keys: slack-ts-pr-${{ github.event.client_payload.pr_number }}
+
+      - run: cat ${{ env.CACHE_FOLDER }}/${{ env.CACHE_FILE }} && echo "cached=true" >> $GITHUB_OUTPUT || echo "cached=false" >> $GITHUB_OUTPUT
+        id: check
+
+      - run: echo "ts=$(cat ${{ env.CACHE_FOLDER }}/${{ env.CACHE_FILE }})" >> $GITHUB_OUTPUT
+        id: slack-thread
+        if: steps.check.outputs.cached == 'true'
+        continue-on-error: true
+    outputs:
+      thread_ts: ${{ steps.slack-thread.outputs.ts }}
+
+  # -------------------------------------------------------------------------- #
+  #        * Type: 'post-code-review-post' / 'close-code-review-post'          #
+  # -------------------------------------------------------------------------- #
+
+  # Prepare Slack Post Content
+  slack-prep:
+    name: Slack Post Content Prep
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    # PR posts are not disabled AND event is 'post-code-review-post' OR 'close-code-review-post'
+    if: needs.code-review-check.outputs.disabled == 'false' && (github.event.action == 'post-code-review-post' || github.event.action == 'close-code-review-post')
+    needs: code-review-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get Jira ID
+        id: jira
+        run: echo "id=$(echo ${{ github.event.client_payload.head_ref }} | grep -Po '\w*-\d\w+')" >> $GITHUB_OUTPUT
+      - name: Get Pull Request
+        id: pull-request
+        run: echo "data=$(gh api /repositories/${{ github.repository_id }}/pulls/${{ github.event.client_payload.pr_number }})" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Reduce Text Length
+        id: reduce-length
+        uses: johnforeland/truncate-tool@v1
+        with:
+          text: ${{ fromJSON(steps.pull-request.outputs.data).body }}
+          max_lines: 3
+      - name: Convert Markdown to mrkdwn
+        id: mrkdwn
+        uses: denis-trofimov/slackify-markdown-action@v1.0.0
+        with:
+          text: ${{ steps.reduce-length.outputs.text }}
+      - name: Set Status
+        id: status
+        run: |
+          echo "text=*Status*: ${{ github.event.client_payload.status }}" >> $GITHUB_OUTPUT
+      - uses: MariachiBear/get-repo-name-action@v1.3.0
+        id: repo-name
+    outputs:
+      jiraId: ${{ steps.jira.outputs.id }}
+      jiraUrl: ${{ steps.jira.outputs.id && format('{0}/browse/{1}|{1}>', vars.SF_JIRA_URL, steps.jira.outputs.id) }}
+      pr_title: ${{ fromJSON(steps.pull-request.outputs.data).title }}
+      pr_body: ${{ steps.mrkdwn.outputs.text }}
+      status: ${{ steps.status.outputs.text }}
+      repo_name: ${{ steps.repo-name.outputs.repository-name }}
+
+  # Remove reactions on existing post due to new changes
+  remove-reactions:
+    name: Remove Old Reactions
+    needs: [code-review-check, find-thread-ts-from-cache]
+    # existing post exists AND PR posts are not disabled AND event is 'post-code-review-post'
+    if: needs.find-thread-ts-from-cache.outputs.thread_ts && needs.code-review-check.outputs.disabled == 'false' && github.event.action == 'post-code-review-post'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.slack.yml
+    secrets: inherit
+    with:
+      thread_ts: ${{ needs.find-thread-ts-from-cache.outputs.thread_ts }}
+      job_name: remove reactions
+      post-to-review-channel: true
+      remove_reactions: true
+
+  # Post to Slack or Update Existing Post with Merged Status
+  post-code-review-post:
+    name: Post/Update Code Review Post
+    # PR posts are not disabled AND event is 'post-code-review-post' OR ('close-code-review-post' AND thread-ts was found in cache)
+    if: needs.code-review-check.outputs.disabled == 'false' && (github.event.action == 'post-code-review-post' || (github.event.action == 'close-code-review-post' && needs.find-thread-ts-from-cache.outputs.thread_ts))
+    needs: [code-review-check, find-thread-ts-from-cache, slack-prep]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.slack.yml
+    secrets: inherit
+    with:
+      job_name: Code Review
+      sender_name: ${{ github.event.client_payload.actor }}
+      sender_icon: https://github.com/${{ github.event.client_payload.actor }}.png
+      update_ts: ${{ needs.find-thread-ts-from-cache.outputs.thread_ts }}
+      post-to-review-channel: true
+      blocks: '[{"type":"section","text":{"type":"mrkdwn","text":"*<https://github.com/${{ github.repository }}/pull/${{ github.event.client_payload.pr_number }}|#${{ github.event.client_payload.pr_number }} ${{ needs.slack-prep.outputs.pr_title }}>* → ${{ github.event.client_payload.base_ref }}"}},{"type":"section","text":{"type":"mrkdwn","text":"${{ github.event.client_payload.status && needs.slack-prep.outputs.status || needs.slack-prep.outputs.pr_body }}"}},{"type":"context","elements":[{"type":"image","image_url":"https://slack-imgs.com/?c=1&o1=wi32.he32.si&url=https%3A%2F%2Fslack.github.com%2Fstatic%2Fimg%2Ffavicon-neutral.png","alt_text":"GitHub"},{"type":"mrkdwn","text":"*<https://github.com/${{ github.repository }}|${{ needs.slack-prep.outputs.repo_name }}> // <https://github.com/${{ github.event.client_payload.actor }}|${{ github.event.client_payload.actor }}> // PR <https://github.com/${{ github.repository }}/pull/${{ github.event.client_payload.pr_number }}|#${{ github.event.client_payload.pr_number }}> // ${{ needs.slack-prep.outputs.jiraUrl }}*"}]},{"type":"divider"}]'
+      text: '[PR] ${{ needs.slack-prep.outputs.pr_title }}'
+
+  # TODO: Vurder hvis thread-ts ble funnet i prep, lag en kommentar til posten med "jeg trenger ny review" (istedenfor oppdatering av posten)
+
+  # Upload Slack Thread TS (New Posts Only)
+  upload-slack-thread-ts:
+    name: Upload Slack Thread TS (New Posts Only)
+    # PR posts are not disabled AND thread-ts is empty AND new post was created AND event is 'post-code-review-post'
+    if: needs.code-review-check.outputs.disabled == 'false' && needs.find-thread-ts-from-cache.outputs.thread_ts == '' && needs.post-code-review-post.outputs.thread-ts && github.event.action == 'post-code-review-post'
+    needs: [code-review-check, find-thread-ts-from-cache, post-code-review-post]
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: mkdir -p ${{ env.CACHE_FOLDER }}
+      - run: echo -n "${{ needs.post-code-review-post.outputs.thread-ts }}" >> ${{ env.CACHE_FOLDER }}/${{ env.CACHE_FILE }}
+
+      # matches the cache job in the job 'find-thread-ts-from-cache'
+      - uses: actions/cache/save@v4
+        with:
+          path: ${{ env.CACHE_FOLDER }}
+          key: slack-ts-pr-${{ github.event.client_payload.pr_number }}
+
+  # -------------------------------------------------------------------------- #
+  #                    * Type: 'post-code-review-comment'                      #
+  # -------------------------------------------------------------------------- #
+
+  post-code-review-comment:
+    name: Post Code Review Comment
+    needs: [code-review-check, find-thread-ts-from-cache]
+    # PR posts are not disabled AND post already created AND event is 'post-code-review-comment'
+    if: needs.code-review-check.outputs.disabled == 'false' && needs.find-thread-ts-from-cache.outputs.thread_ts && github.event.action == 'post-code-review-comment'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.slack.yml
+    secrets: inherit
+    with:
+      thread_ts: ${{ needs.find-thread-ts-from-cache.outputs.thread_ts }}
+      job_name: Post Review Comment (${{ github.event.client_payload.status }})
+      post-to-review-channel: true
+      reaction_name: ${{ github.event.client_payload.emoji }}
+      blocks: '[{"type":"section","fields":[{"type":"mrkdwn","text":"*Status*\n:${{ github.event.client_payload.emoji }}: ${{ github.event.client_payload.status }} "}]},{"type":"section","text":{"type":"mrkdwn","text":"*Tilbakemelding*\n${{ github.event.client_payload.pr_body }}"}},{"type":"actions","elements":[{"type":"button","text":{"type":"plain_text","emoji":true,"text":"👀 Åpne Review"},"style":"primary","url":"${{ github.event.client_payload.html_url }}"}]}]'
+      sender_name: ${{ github.event.client_payload.actor }}
+      sender_icon: https://github.com/${{ github.event.client_payload.actor }}.png

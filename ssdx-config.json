@@ -1,0 +1,55 @@
+{
+    "default_config": "config/project-scratch-def.json",
+    "pre_dependencies": [],
+    "pre_deploy": [
+        {
+            "type": "permissionSetLicense",
+            "value": "EmbeddedServiceMessagingUserPsl",
+            "continue_on_error": true
+        },
+        {
+            "type": "apex",
+            "value": "bin/apex/enableChatUser.apex",
+            "continue_on_error": true
+        }
+    ],
+    "post_deploy": [
+        {
+            "type": "apex",
+            "value": "bin/apex/addToGroup.apex",
+            "continue_on_error": true
+        },
+        {
+            "type": "js",
+            "value": "bin/js/manipulateMetadataBeforeDeploy.js",
+            "continue_on_error": true
+        },
+        {
+            "type": "metadata",
+            "value": "unpackaged",
+            "continue_on_error": true
+        },
+        {
+            "type": "permissionSet",
+            "value": "PermissionSetGroupDevName",
+            "continue_on_error": true
+        },
+        {
+            "type": "permissionSet",
+            "value": "PermissionSetDevName",
+            "continue_on_error": true
+        }
+    ],
+    "post_install": [
+        {
+            "type": "js",
+            "value": "bin/js/manipulateMetadataBeforeDeploy.js",
+            "continue_on_error": true
+        },
+        {
+            "type": "metadata",
+            "value": "unpackaged",
+            "continue_on_error": true
+        }
+    ]
+}

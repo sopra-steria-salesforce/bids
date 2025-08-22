@@ -1,0 +1,23 @@
+name: '[Subflow] Cache Data'
+on:
+  repository_dispatch:
+    types: [cache-data]
+jobs:
+  cache:
+    name: Cache ${{ github.event.client_payload.cache_id }}
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: mkdir -p ${{ github.event.client_payload.folder }}
+      - run: echo -n "${{ github.event.client_payload.username }}" >> ${{ github.event.client_payload.folder }}/${{ github.event.client_payload.username_file }}
+      - run: echo -n "${{ github.event.client_payload.instanceUrl }}" >> ${{ github.event.client_payload.folder }}/${{ github.event.client_payload.instanceUrl_file }}
+
+      # since this workflow is running as a repository_dispatch, saving the cache allows every branch to fetch it
+      - uses: actions/cache/save@v4
+        with:
+          path: ${{ github.event.client_payload.folder }}
+          key: ${{ github.event.client_payload.cache_id }}

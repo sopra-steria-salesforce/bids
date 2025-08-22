@@ -1,0 +1,61 @@
+name: '[CRON] Clean Branches'
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+jobs:
+  delete-branches:
+    name: Delete branches
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: [preprod]
+    steps:
+      # Fetch salesforce-bot token
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+
+      # Checkout Code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ matrix.branch }}
+          token: ${{ steps.generate_token.outputs.token }}
+
+      # Detect changes
+      - uses: younited/detect-branch-changes-action@v0.2.0
+        id: detect_changes
+
+      # Find Pull Request
+      - uses: juliangruber/find-pull-request-action@v1
+        id: find-pull-request
+        with:
+          base: ${{ matrix.branch }}
+
+      # Delete branch if no changes and no open PR's to branch
+      - name: Delete '${{ matrix.branch }}' because no changes were detected
+        if: steps.detect_changes.outputs.changed == 'false' && steps.find-pull-request.outputs.number == ''
+        uses: dawidd6/action-delete-branch@v3
+        with:
+          github_token: ${{ steps.generate_token.outputs.token }}
+          branches: ${{ matrix.branch }}
+          soft_fail: true
+
+      # Re-create branch if deleted
+      - name: Create '${{ matrix.branch }}' from master
+        if: steps.detect_changes.outputs.changed == 'false' && steps.find-pull-request.outputs.number == ''
+        uses: peterjgrainger/action-create-branch@v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+        with:
+          branch: ${{ matrix.branch }}
+          sha: ${{ github.sha }}

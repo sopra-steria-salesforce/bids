@@ -1,0 +1,9 @@
+*.py linguist-detectable=false
+*.pyc linguist-detectable=false
+*.js linguist-detectable=false
+*.css linguist-detectable=false
+*.html linguist-detectable=false
+*.cls linguist-detectable=true
+
+**/*.cls-meta.xml linguist-generated=true
+**/*.trigger-meta.xml linguist-generated=true

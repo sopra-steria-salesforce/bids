@@ -1,0 +1,112 @@
+name: '[Subflow] Sync'
+on:
+  workflow_call:
+    inputs:
+      env:
+        type: string
+jobs:
+  sync:
+    name: Sync
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: generate_token
+        with:
+          app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
+          private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.generate_token.outputs.token }}
+      - uses: fregante/setup-git-user@v2
+      - run: git fetch
+      - run: git checkout ${{ inputs.env }}
+
+      # git rebase
+      - run: git rebase ${{ github.ref_name }}
+        id: rebase
+        continue-on-error: true
+      - run: git rebase --abort
+        if: steps.rebase.outcome != 'success'
+        continue-on-error: true
+
+      # fallback to merge if rebase fails
+      - run: git merge ${{ github.ref_name }}
+        if: steps.rebase.outcome != 'success'
+        id: merge
+        continue-on-error: true
+
+      #! force push is needed, due to rewriting commit history by rebasing
+      - run: git push origin HEAD:${{ inputs.env }} --force
+        id: push
+        if: steps.rebase.outcome == 'success' || steps.merge.outcome == 'success'
+        continue-on-error: true
+
+      # Delete sync branch if existing
+      - name: '[Fallback] Delete Sync Branch "sync/${{ inputs.env }}"'
+        if: steps.push.outcome != 'success'
+        uses: dawidd6/action-delete-branch@v3
+        with:
+          github_token: ${{ steps.generate_token.outputs.token }}
+          branches: sync/${{ inputs.env }}
+          soft_fail: true
+
+      # Create new branch
+      - name: '[Fallback] Create Sync Branch "sync/${{ inputs.env }}"'
+        if: steps.push.outcome != 'success'
+        uses: peterjgrainger/action-create-branch@v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+        with:
+          branch: sync/${{ inputs.env }}
+          sha: ${{ github.sha }}
+
+      - run: sleep 5 # wait for any existing PR to be closed
+        if: steps.push.outcome != 'success'
+
+      # Create Pull Request
+      - name: '[Fallback] Create Pull Request'
+        if: steps.push.outcome != 'success'
+        id: create-pr
+        uses: tretuna/sync-branches@1.4.0
+        with:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          FROM_BRANCH: sync/${{ inputs.env }}
+          TO_BRANCH: ${{ inputs.env }}
+          PULL_REQUEST_TITLE: '[SYNC] Auto-merge failed from ${{ github.ref_name }} → ${{ inputs.env }}, please review and merge manually'
+          PULL_REQUEST_BODY: |
+            This pull request was automatically created because the automatic rebase and merge from ${{ github.ref_name }} → ${{ inputs.env }} failed due to a merge conflicts. Please review and merge manually.
+
+            # Validation
+
+            To start validation, run `/retry` in a comment.
+
+      - name: '[Fallback] Get Repo Name'
+        uses: MariachiBear/get-repo-name-action@v1.3.0
+        if: steps.push.outcome != 'success' && vars.SF_SLACK_ENABLED == 'true'
+        id: repo-name
+    outputs:
+      REPO_NAME: ${{ steps.repo-name.outputs.repository-name }}
+      PULL_REQUEST_NUMBER: ${{ steps.create-pr.outputs.PULL_REQUEST_NUMBER }}
+      PUSH_OUTCOME: ${{ steps.push.outcome }}
+
+  slack-error:
+    name: Post Slack on Error
+    if: needs.sync.outputs.PUSH_OUTCOME != 'success' && vars.SF_SLACK_ENABLED == 'true'
+    needs: sync
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/subflow.slack.yml
+    secrets: inherit
+    with:
+      job_name: slack sync report
+      post-to-sync-channel: true
+      blocks: '[{"type":"header","text":{"type":"plain_text","text":"[${{ needs.sync.outputs.REPO_NAME }}] Sync failed → ${{ inputs.env }}","emoji":true}},{"type":"section","fields":[{"type":"mrkdwn","text":"*Opened By*\n<https://github.com/${{ github.actor }}|${{ github.actor }}>"}],"accessory":{"type":"overflow","options":[{"text":{"type":"plain_text","text":"🖥️ Open PR"},"url":"https://github.com/${{ github.repository }}/pull/${{ needs.sync.outputs.PULL_REQUEST_NUMBER }}"},{"text":{"type":"plain_text","text":"🤓 View Logs"},"url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"},{"text":{"type":"plain_text","text":"🤖 Open Repo"},"url":"https://github.com/${{ github.repository }}"}]}}]'
+      text: Sync Failure - ${{ github.ref_name }} → ${{ inputs.env }}
+      unfurl_links: false
+      unfurl_media: false
+      # view blocks in https://app.slack.com/block-kit-builder

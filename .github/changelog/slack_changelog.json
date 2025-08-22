@@ -1,0 +1,19 @@
+{
+	"categories": [
+		{
+			"title": "## 🚀 Nytt",
+			"labels": ["feature", "enhancement"]
+		},
+		{
+			"title": "## 🐛 Bugs",
+			"labels": ["fix", "bug"]
+		},
+		{
+			"title": "## 🔬 Annet",
+			"labels": ["test", "documentation", "refactor"]
+		}
+	],
+	"template": "#{{CHANGELOG}}",
+	"pr_template": "- #{{TITLE}} ([#{{NUMBER}}](#{{URL}}))",
+	"base_branches": ["main"]
+}

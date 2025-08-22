@@ -1,0 +1,76 @@
+{
+	"id": 915278,
+	"name": "Default Protection",
+	"target": "branch",
+	"source_type": "Repository",
+	"source": "sopra-steria-salesforce/salesforce-dx-template",
+	"enforcement": "active",
+	"conditions": {
+		"ref_name": {
+			"exclude": [],
+			"include": ["~DEFAULT_BRANCH", "refs/heads/preprod"]
+		}
+	},
+	"rules": [
+		{
+			"type": "deletion"
+		},
+		{
+			"type": "non_fast_forward"
+		},
+		{
+			"type": "pull_request",
+			"parameters": {
+				"required_approving_review_count": 0,
+				"dismiss_stale_reviews_on_push": false,
+				"require_code_owner_review": false,
+				"require_last_push_approval": false,
+				"required_review_thread_resolution": false
+			}
+		},
+		{
+			"type": "creation"
+		},
+		{
+			"type": "required_status_checks",
+			"parameters": {
+				"strict_required_status_checks_policy": false,
+				"required_status_checks": [
+					{
+						"context": "Install Dependencies",
+						"integration_id": 15368
+					},
+					{
+						"context": "Compile Metadata",
+						"integration_id": 15368
+					},
+					{
+						"context": "Run Apex Tests",
+						"integration_id": 15368
+					},
+					{
+						"context": "Validate 85% Code Coverage",
+						"integration_id": 15368
+					}
+				]
+			}
+		}
+	],
+	"bypass_actors": [
+		{
+			"actor_id": 5,
+			"actor_type": "RepositoryRole",
+			"bypass_mode": "always"
+		},
+		{
+			"actor_id": 123,
+			"actor_type": "Integration",
+			"bypass_mode": "always"
+		},
+		{
+			"actor_id": 1,
+			"actor_type": "OrganizationAdmin",
+			"bypass_mode": "always"
+		}
+	]
+}
