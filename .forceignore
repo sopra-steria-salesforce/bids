@@ -16,3 +16,9 @@
 **/tsconfig*.json
 **/*.tsbuildinfo
 **/eslint.config.mjs
+
+# Inactive Flows in Production. Should be deleted?
+force-app/flows/Manage_BIDs_NO.flow-meta.xml
+force-app/flows/Manage_Bid_SE.flow-meta.xml
+force-app/flows/Reset_Many_Bid_Rooms.flow-meta.xml
+force-app/flows/Manage_Bid_Single.flow-meta.xml
