@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Country__c</fullName>
+    <externalId>false</externalId>
+    <formula>CASE(TEXT(Opportunity__r.Account.Country__c), &apos;Sweden&apos;, &apos;Sverige&apos;,
+&apos;Norway&apos;, &apos;Norge&apos;,
+&apos;Denmark&apos;, &apos;Danmark&apos;,
+&apos;&apos;)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Country</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

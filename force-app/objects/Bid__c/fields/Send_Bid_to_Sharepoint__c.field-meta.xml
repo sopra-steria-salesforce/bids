@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Send_Bid_to_Sharepoint__c</fullName>
+    <description>Joined field to separate two condititions for update flow</description>
+    <formula>IF (AND(Is_Bid_changed__c ,  Is_created_in_Bid_portal__c ) , TRUE, FALSE)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Send Bid to Sharepoint</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

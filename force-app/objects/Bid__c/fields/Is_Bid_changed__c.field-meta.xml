@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Is_Bid_changed__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Set by  Processbuilder (to TRUE) or MS Flow (to FALSE) to prevent unneccessary updates in sharepoint</description>
+    <label>Is Bid changed</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

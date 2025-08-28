@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Free_Bid_URL</fullName>
+    <columns>NAME</columns>
+    <columns>CREATED_DATE</columns>
+    <columns>URL__c</columns>
+    <columns>URL_Link__c</columns>
+    <columns>Used__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Used__c</field>
+        <operation>equals</operation>
+        <value>0</value>
+    </filters>
+    <label>Free Bid URL</label>
+</ListView>

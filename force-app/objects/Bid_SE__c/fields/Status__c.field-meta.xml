@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Status__c</fullName>
+    <externalId>false</externalId>
+    <formula>TEXT(Opportunity__r.StageName )+ 
+CASE(LEFT(TEXT(Opportunity__r.StageName),1),
+&apos;1&apos;,&apos;&apos;,
+&apos;2&apos;, &apos; - &apos; + TEXT(Opportunity__r.Status__c),
+&apos;3&apos;,&apos; - &apos; + TEXT(Opportunity__r.Status__c),
+&apos;4&apos;, &apos; - &apos; + TEXT(Opportunity__r.Status__c),
+&apos;&apos;)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Status</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
