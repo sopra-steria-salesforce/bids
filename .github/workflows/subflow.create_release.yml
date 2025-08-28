@@ -33,8 +33,8 @@ jobs:
         id: release
         run: |
           echo "codeCoverageColor=${{ inputs.CODE_COVERAGE >= 85 && 'green' || inputs.CODE_COVERAGE < 85 && 'red' }}" >> $GITHUB_OUTPUT
-          echo "sitStatus=${{ inputs.SUCCESSFULLY_INSTALLED == 'true' && 'builds' || 'failing' }}" >> $GITHUB_OUTPUT
-          echo "sitColor=${{ inputs.SUCCESSFULLY_INSTALLED == 'true' && 'green' || 'red' }}" >> $GITHUB_OUTPUT
+          echo "qaStatus=${{ inputs.SUCCESSFULLY_INSTALLED == 'true' && 'builds' || 'failing' }}" >> $GITHUB_OUTPUT
+          echo "qaColor=${{ inputs.SUCCESSFULLY_INSTALLED == 'true' && 'green' || 'red' }}" >> $GITHUB_OUTPUT
 
       # find the previous pre-release
       - run: tag=$(gh api /repositories/${{ github.repository_id }}/releases --jq '.[0].tag_name') && echo "PREVIOUS_PRERELEASE=$tag" >> $GITHUB_ENV
@@ -48,7 +48,7 @@ jobs:
 
       # Generate changelog from commits
       - name: Build Delta Changelog
-        uses: mikepenz/release-changelog-builder-action@v5
+        uses: mikepenz/release-changelog-builder-action@v4
         id: delta-changelog
         with:
           configuration: .github/changelog/delta_changelog.json
@@ -59,7 +59,7 @@ jobs:
 
       # Generate changelog from commits
       - name: Build Full Changelog
-        uses: mikepenz/release-changelog-builder-action@v5
+        uses: mikepenz/release-changelog-builder-action@v4
         id: full-changelog
         with:
           configuration: .github/changelog/full_changelog.json
@@ -84,8 +84,8 @@ jobs:
                 <img src="https://img.shields.io/badge/Deploy-${{ inputs.NEW_VERSION_TAG }}-blue" /></a>
               <a href="#sponsors" alt="Code Coverage">
                 <img src="https://img.shields.io/badge/Code_Coverage-${{ inputs.CODE_COVERAGE || 0 }}%25-${{ steps.release.outputs.codeCoverageColor }}" /></a>
-              <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" alt="SIT Status">
-                <img src="https://img.shields.io/badge/SIT-${{ steps.release.outputs.sitStatus }}-${{ steps.release.outputs.sitColor }}" /></a>
+              <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" alt="QA Status">
+                <img src="https://img.shields.io/badge/QA-${{ steps.release.outputs.qaStatus }}-${{ steps.release.outputs.qaColor }}" /></a>
             </p>
             <p>
               <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" alt="Logs">

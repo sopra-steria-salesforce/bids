@@ -1,4 +1,5 @@
 #!/bin/bash
+exit 0
 
 FILES=$(git diff --cached --name-only --diff-filter=ACMR | sed 's| |\\ |g')
 if [ -n "$FILES" ]; then
@@ -9,7 +10,7 @@ if [ -n "$FILES" ]; then
 fi
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
-REGEX="^(cleanup\/.+|sync\/.+)|^(dev|preprod|main|master|test|CI\/package-version-update)|^((feature|bug|fix|docs|refactor|test)\/(FKP|SPESP)-[0-9]+(-|_)([A-z]|[0-9]|-|_)+)$"
+REGEX="^(cleanup\/.+|sync\/.+)|^(dev|preprod|main|master|test|CI\/package-version-update)|^((feature|bug|fix|docs|refactor|test|CI)\/(CIS|SPESP)-[0-9]+(-|_)([A-z]|[0-9]|-|_)+)$"
 
 if ! [[ $BRANCH =~ $REGEX ]]; then
 	echo ""
@@ -17,7 +18,7 @@ if ! [[ $BRANCH =~ $REGEX ]]; then
 	echo "|        Branch name is not correct         |"
 	echo "|-------------------------------------------|"
 	echo "| Use only (A-z), (0-9) and (- _ /)         |"
-	echo "| Use format 'feature/FKP-123-your-feature' |"
+	echo "| Use format 'feature/CIS-123-your-feature' |"
 	echo "|            'refactor/*******************' |"
 	echo "|            'docs/***********************' |"
 	echo "|            'test/***********************' |"

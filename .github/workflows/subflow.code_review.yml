@@ -89,7 +89,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Reduce Text Length
         id: reduce-length
-        uses: johnforeland/truncate-tool@v1
+        uses: johnforeland/truncate-tool@v0.5
         with:
           text: ${{ fromJSON(steps.pull-request.outputs.data).body }}
           max_lines: 3
@@ -124,6 +124,7 @@ jobs:
     uses: ./.github/workflows/subflow.slack.yml
     secrets: inherit
     with:
+      env: prod
       thread_ts: ${{ needs.find-thread-ts-from-cache.outputs.thread_ts }}
       job_name: remove reactions
       post-to-review-channel: true
@@ -141,6 +142,7 @@ jobs:
     uses: ./.github/workflows/subflow.slack.yml
     secrets: inherit
     with:
+      env: prod
       job_name: Code Review
       sender_name: ${{ github.event.client_payload.actor }}
       sender_icon: https://github.com/${{ github.event.client_payload.actor }}.png
@@ -187,6 +189,7 @@ jobs:
     uses: ./.github/workflows/subflow.slack.yml
     secrets: inherit
     with:
+      env: prod
       thread_ts: ${{ needs.find-thread-ts-from-cache.outputs.thread_ts }}
       job_name: Post Review Comment (${{ github.event.client_payload.status }})
       post-to-review-channel: true
