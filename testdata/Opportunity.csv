@@ -1,0 +1,79 @@
+Account.Id,ID,Name,Contract_Price_Model__c,StageName,Amount,Probability,CloseDate,Type,Consultants__c,Country__c,Months__c,Sector__c,Contract_Category__c,Business_Unit__c,Amount_Old_Value__c,StageName_Priorvalue__c,EUR_Rate__c,Project_Start_Date__c
+1,1,Nordvik Solutions AS - Digital Transformation Project,,1 - Possibility,630000,10,2025-08-30,Resources,1,Norway,3,DHS,,APPS,630000,0 - Planning,11.52,2025-08-30
+2,3,Fjordlys Consulting -Cloud Migration Initiative,,0 - Planning,3500000,0,2025-09-30,Resources,4,Sweden,6,TMT,,,0,0 - Planning,11.31,2025-09-30
+3,5,Blåberg Energi -Data Analytics Implementation,T&M (No estimates or cap),1 - Possibility,630000,30,2025-08-31,Resources,1,Norway,3,FS,New call off (Agreement on existing contract),DPS,630000,1 - Possibility,11.52,2025-08-31
+4,9,Vik & Sønner AS -ERP Modernization Program,,1 - Possibility,210000,10,2025-12-31,Frame agreement,1,Norway,1,FS,,APPS,210000,1 - Possibility,11.52,2025-12-31
+5,13,Polarstrand Transport -Fleet IoT Integration,,1 - Possibility,210000,10,2025-09-01,Frame agreement,1,Norway,1,Energy,,APPS,0,0 - Planning,11.52,2025-09-01
+6,17,GrønnDal Entreprenør -Construction Management Software Setup,,1 - Possibility,1260000,10,2025-10-31,Resources,1,Norway,6,Transport,,APPS;DPS,1260000,0 - Planning,11.52,2025-10-31
+7,18,Sørfjord Data -Cybersecurity Assessment,,1 - Possibility,1260000,10,2025-10-31,Resources,1,Norway,6,Transport,,APPS;DPS,0,0 - Planning,11.52,2025-10-31
+8,23,Havblikk Marine AS -Maritime Systems Upgrade,Fixed price/Target price,1 - Possibility,840000,10,2025-06-30,Resources,2,Norway,2,DHS,New call off (Agreement on existing contract),APPS,840000,1 - Possibility,11.52,2025-06-30
+9,24,OsloTeknikk -CRM Platform Rollout,Fixed price/Target price,1 - Possibility,840000,10,2025-06-30,Resources,2,Norway,2,Industry,New call off (Agreement on existing contract),APPS,840000,1 - Possibility,11.52,2025-06-30
+10,26,Lysengen Design -E-Commerce Platform Integration,Fixed price/Target price,1 - Possibility,840000,10,2025-06-30,Resources,2,Norway,2,Energy,New call off (Agreement on existing contract),APPS,840000,1 - Possibility,11.52,2025-06-30
+11,27,Nordhavn Mat AS -Supply Chain Optimization Project,,0 - Planning,,0,2025-12-31,Project,0,Norway,0,,,APPS,0,0 - Planning,11.52,2025-12-31
+12,30,Fjellstrøm IT -Managed Services Agreement,,1 - Possibility,630000,10,2025-12-31,Resources,1,Norway,3,FS,,APPS;DPS,630000,0 - Planning,11.52,2025-12-31
+13,31,Vestmark Rørservice -Field Service Management Implementation,,1 - Possibility,420000,10,2025-09-30,Project,2,Sweden,1,Healthcare,New contract (not connected to framework/capacity agreement),,420000,1 - Possibility,11.31,2025-09-30
+14,33,Elvebredd Elektro -Smart Grid Consulting Project,T&M (No estimates or cap),1 - Possibility,200000,50,2025-08-31,Project,2,Norway,5,,New contract (not connected to framework/capacity agreement),Advisory,0,1 - Possibility,11.52,2025-08-31
+15,34,Aurora Bygg og Anlegg -Project Management Tool Deployment,,1 - Possibility,630000,10,2025-09-30,Frame agreement,1,Denmark,3,Other,,APPS,630000,1 - Possibility,11.52,2025-09-30
+16,35,Boreal Finans AS -AI-Driven Risk Analysis,,1 - Possibility,300000,10,2025-09-30,Resources,2,Sweden,1,TMT,,,0,1 - Possibility,11.31,2025-09-30
+17,40,Solbrekka Eiendom -Tenant Portal Development,,1 - Possibility,420000,10,2025-09-30,Frame agreement,1,Faroes,2,Government,,APPS,420000,1 - Possibility,11.52,2025-09-30
+18,42,Tindefjell Turistservice -Booking Platform Upgrade,,0 - Planning,,0,2025-12-31,Project,0,Norway,0,Other,,APPS,0,0 - Planning,11.52,2025-12-31
+19,45,Havørna Regnskap -Financial Systems Migration,,0 - Planning,,0,2026-10-31,Frame agreement,0,Sweden,0,Government,,,0,0 - Planning,11.31,2026-10-31
+20,48,Granly Kantine -POS System Implementation,,1 - Possibility,5040000,50,2025-07-31,Capacity agreement,2,Norway,12,Energy,,APPS,5040000,1 - Possibility,11.52,2025-08-01
+21,51,Kystvind Shipping -Logistics Optimization Platform,T&M with estimates / delivery responsibility,1 - Possibility,45360000,40,2025-12-31,Capacity agreement,6,Norway,36,Energy,,APPS;DPS;Advisory,45360000,1 - Possibility,11.52,2025-12-31
+22,64,Arktisk Lys Reklame -Digital Signage Automation,T&M (No estimates or cap),0 - Planning,15120000,0,2025-09-30,Resources,6,Norway,12,Industry,New contract (not connected to framework/capacity agreement),DPS,15120000,0 - Planning,11.52,2025-09-30
+23,65,Varden Auto -Dealer Management System Upgrade,,0 - Planning,950000,0,2025-10-31,Resources,1,Sweden,6,TMT,,,0,0 - Planning,11.31,2025-10-31
+24,70,Himmelblå Produkter -Product Lifecycle Management Project,,1 - Possibility,2520000,10,2025-12-31,Capacity agreement,1,Denmark,12,Government,,APPS,2520000,1 - Possibility,11.52,2025-12-31
+25,71,Snøtind AS -Cloud Services Contract,,0 - Planning,,0,2025-12-31,Project,0,Norway,0,,,APPS,0,0 - Planning,11.52,2025-12-31
+26,72,Nordstrand Kulturservice -Digital Ticketing System Rollout,,0 - Planning,,0,2025-11-30,Project,0,Norway,0,Industry,,APPS,0,0 - Planning,11.52,2025-11-30
+27,73,Lyngbråten Landbruk -Precision Agriculture Data Platform,T&M (No estimates or cap),0 - Planning,,0,2025-11-30,Project,0,Norway,0,,New contract (not connected to framework/capacity agreement),APPS,0,0 - Planning,11.52,2025-11-30
+28,74,Sjøbris Catering -Online Ordering System Deployment,T&M (No estimates or cap),1 - Possibility,840000,10,2025-09-01,Resources,2,Norway,2,FS,New call off (Agreement on existing contract),APPS,840000,1 - Possibility,11.52,2025-09-01
+29,76,Rødli Rør og Varme -Mobile Field App Deployment,FAST,1 - Possibility,199999,10,2025-10-31,Project,2,Norway,0.5,,New contract (not connected to framework/capacity agreement),APPS;DPS;Advisory,0,1 - Possibility,11.52,2025-10-31
+30,78,Stormheim IT-Tjenester -Network Infrastructure Overhaul,,1 - Possibility,630000,10,2025-11-28,Resources,1,Norway,3,Other,,DPS,630000,0 - Planning,11.52,2025-11-28
+31,79,Vestfjord Verksted -IoT Machine Monitoring Setup,Fixed price/Target price,0 - Planning,199999,0,2025-09-01,Project,2,Norway,0.5,Government,New contract (not connected to framework/capacity agreement),APPS;DPS;Advisory,0,0 - Planning,11.52,2025-09-01
+32,80,Havkraft AS -Renewable Energy Data Analytics,,0 - Planning,199999,0,2026-02-01,Project,2,Norway,0.5,,,APPS;DPS;Advisory,0,0 - Planning,11.52,2026-02-01
+33,81,Skogholt Sagbruk -Production Process Automation,,0 - Planning,199999,0,2025-11-01,Project,2,Norway,0.5,,,APPS;DPS;Advisory,0,0 - Planning,11.52,2025-11-01
+34,82,Granitbygg AS -BIM Technology Implementation,FAST,0 - Planning,199999,0,2025-12-31,Project,2,Norway,0.5,Retail,New contract (not connected to framework/capacity agreement),APPS;DPS;Advisory,0,0 - Planning,11.52,2025-12-31
+35,86,Røysland Rengjøring -Workforce Scheduling Platform,T&M (No estimates or cap),1 - Possibility,630000,10,2025-08-29,Managed Services Add-On,1,Norway,3,Government,New call off (Agreement on existing contract),DPS,630000,0 - Planning,11.52,2025-08-29
+36,87,Vinterdal Media -Digital Asset Management System,,1 - Possibility,630000,10,2025-09-30,Resources,1,Norway,3,DHS,,APPS;Advisory,630000,0 - Planning,11.52,2025-09-30
+37,91,Elveøy Fiskeri -Fisheries Data Tracking System,,0 - Planning,600000,0,2025-10-31,Project,0,Norway,0,Government,Change to an active call off or contract,APPS;DPS;Advisory,0,0 - Planning,11.52,2025-10-31
+38,94,Polarhavn Logistikk -Supply Chain Visibility Platform,T&M (No estimates or cap),0 - Planning,,0,2025-12-06,Project,0,Norway,0,Government,,APPS;DPS;Advisory,0,0 - Planning,11.52,2025-12-06
+39,98,Kraftlyd Musikkstudio -Audio Production Workflow Upgrade,,1 - Possibility,630000,10,2025-06-30,Resources,1,Norway,3,Energy,,Advisory,630000,0 - Planning,11.52,2025-06-30
+40,99,Blåfjell Bad & Kjøkken -Inventory Management System,,1 - Possibility,630000,10,2025-06-30,Resources,1,Norway,3,Energy,,DPS;Advisory,630000,0 - Planning,11.52,2025-06-30
+41,100,Havtind Eiendomsutvikling -Real Estate CRM Rollout,T&M (No estimates or cap),1 - Possibility,630000,10,2025-06-30,Resources,1,Norway,3,Other,New contract (not connected to framework/capacity agreement),DPS,630000,4 - Offer,11.52,2025-06-30
+42,106,Gullfoss Regnskap -Cloud Accounting Migration,T&M (No estimates or cap),1 - Possibility,630000,30,2025-08-31,Resources,1,Norway,3,FS,New call off (Agreement on existing contract),APPS;DPS,630000,1 - Possibility,11.52,2025-08-31
+43,115,Lynge Servicepartner -Helpdesk Platform Deployment,,1 - Possibility,2520000,10,2026-01-01,Resources,2,Norway,6,Government,,APPS,2520000,0 - Planning,11.52,2026-01-01
+44,116,Ørnli Blomster -Retail Sales Analytics Project,T&M (No estimates or cap),1 - Possibility,2520000,10,2025-08-31,Resources,1,Norway,12,TMT,New contract (not connected to framework/capacity agreement),APPS,2520000,1 - Possibility,11.52,2025-08-31
+45,117,Sandli Bakeri -Bakery ERP Implementation,T&M (No estimates or cap),1 - Possibility,630000,10,2025-08-31,Resources,1,Norway,3,FS,,APPS,630000,1 - Possibility,11.52,2025-08-31
+46,118,Månestråle Foto -Digital Editing Workflow Optimization,T&M (No estimates or cap),0 - Planning,10080000,0,2025-09-30,Resources,4,Norway,12,Industry,,DPS,10080000,0 - Planning,11.52,2025-09-30
+47,120,Frostvik Elektroservice -Field Technician Scheduling Tool,,1 - Possibility,630000,10,2025-10-31,Project,1,Norway,3,Industry,,APPS,630000,1 - Possibility,11.52,2025-10-31
+48,121,Isbreen Varehandel -Omnichannel Retail System,,0 - Planning,100000,0,2025-09-01,Resources,,Norway,0,Government,,APPS;DPS;Advisory,0,0 - Planning,11.52,2025-09-01
+49,131,Solvik Renhold -Cleaning Operations Management Software,,0 - Planning,25200000,0,2025-12-31,Project,5,Norway,24,Retail,New contract (not connected to framework/capacity agreement),APPS,25200000,1 - Possibility,11.52,2025-12-31
+50,145,Vargøy Mekaniske Verksted -Predictive Maintenance Analytics,,1 - Possibility,1000000,90,2025-08-31,Frame agreement,1.5,Norway,3,Government,,Advisory,0,1 - Possibility,11.52,2025-08-31
+51,149,Fjordglimt Barnehage -Parent Portal Development,,1 - Possibility,1260000,10,2025-08-31,Resources,1,Norway,6,Government,,APPS,1260000,1 - Possibility,11.52,2025-08-31
+52,151,Bjørnefjell Maskin -Heavy Equipment Monitoring System,,1 - Possibility,630000,10,2025-12-12,Resources,1,Norway,3,Transport,,DPS,630000,0 - Planning,11.52,2025-12-12
+53,153,Nordberg Transportservice -Transport Management Platform,T&M (No estimates or cap),1 - Possibility,6500000,10,2025-08-31,Resources,5,Sweden,6,Government,New contract (not connected to framework/capacity agreement),,0,1 - Possibility,11.31,2026-01-01
+54,154,Lofotmat AS -Food Traceability System Implementation,,0 - Planning,840000,0,2025-12-31,Managed services,2,Norway,2,Industry,,APPS;DPS,840000,0 - Planning,11.52,2025-12-31
+55,156,Trollheim Turbusser -Passenger Booking App,,1 - Possibility,210000,10,2025-09-30,Project,1,Norway,1,FS,,APPS,210000,1 - Possibility,11.52,2025-09-30
+56,158,Lysebotn Konsulenttjenester -IT Strategy & Advisory Project,T&M with estimates / delivery responsibility,0 - Planning,630000,0,2025-09-30,Project,1,Norway,3,Government,New call off (Agreement on existing contract),APPS;DPS;Advisory,630000,0 - Planning,11.52,2025-09-30
+57,162,Kysthavn Malerservice -Job Tracking Platform Deployment,,1 - Possibility,840000,10,2025-08-30,Resources,2,Norway,2,Other,,APPS,840000,1 - Possibility,11.52,2025-08-30
+58,163,Ravnås Revisjon -Audit Process Automation,T&M (No estimates or cap),1 - Possibility,7560000,10,2025-12-31,Resources,3,Norway,12,Industry,,DPS,7560000,1 - Possibility,11.52,2026-01-01
+59,169,Østerli Teknologi -ERP Cloud Deployment,,1 - Possibility,630000,10,2025-08-31,Resources,1,Norway,3,Transport,,APPS;DPS,630000,0 - Planning,11.52,2025-08-31
+60,170,Frosthavn Engineering -Product Lifecycle Data Integration,T&M with estimates / delivery responsibility,1 - Possibility,20000000,10,2025-08-31,Project,8,Norway,12,Industry,New contract (not connected to framework/capacity agreement),APPS,0,1 - Possibility,11.52,2025-10-01
+61,171,Havbris Husdesign -Home Design VR Platform,,1 - Possibility,1260000,10,2025-09-30,Capacity agreement,1,Norway,6,FS,,APPS,1260000,1 - Possibility,11.52,2025-09-30
+62,173,Vinterlys Grafisk -Creative Asset Management Tool,FAST,1 - Possibility,2520000,10,2025-09-30,Resources,2,Norway,6,TMT,New contract (not connected to framework/capacity agreement),APPS,2520000,1 - Possibility,11.52,2025-09-30
+63,174,Åsly Entreprenør -Construction Site IoT Implementation,,0 - Planning,2520000,0,2025-12-31,Project,2,Norway,6,Energy,,APPS,2520000,0 - Planning,11.52,2025-12-31
+64,175,Tindbråten Catering -Catering Order Management System,Fixed price/Target price,1 - Possibility,840000,10,2026-02-02,Project,2,Norway,2,Government,New contract (not connected to framework/capacity agreement),APPS,840000,1 - Possibility,11.52,2026-02-02
+65,177,Blåskjell Marine -Aquaculture Data Analytics Platform,,1 - Possibility,630000,10,2025-09-01,Resources,1,Norway,3,Government,,APPS,630000,0 - Planning,11.52,2025-09-01
+66,179,Sørvik Service AS -Digital Workflow Transformation,Fixed price/Target price,1 - Possibility,500000,60,2025-10-31,Project,3,Norway,2,Industry,New contract (not connected to framework/capacity agreement),APPS,0,1 - Possibility,11.52,2025-10-31
+67,182,Elveland Bygg -Project Tracking Software Implementation,,1 - Possibility,420000,10,2025-08-29,Resources,1,Norway,2,Energy,,Advisory,420000,1 - Possibility,11.52,2025-08-29
+68,183,Grøtli Gartneri -Smart Greenhouse Monitoring,T&M with estimates / delivery responsibility,1 - Possibility,100000,10,2025-08-31,Project,2,Norway,1,Government,New contract (not connected to framework/capacity agreement),APPS;Advisory,0,1 - Possibility,11.52,2025-08-31
+69,186,Nordfjell Mekanikk -Predictive Maintenance System,Fixed price/Target price,1 - Possibility,300000,10,2025-08-31,Project,1,Norway,1,Government,New call off (Agreement on existing contract),APPS,0,1 - Possibility,11.52,2025-08-31
+70,187,Bergstrand Trevare -Production Line IoT Deployment,,1 - Possibility,400000,10,2025-09-30,Project,1,Norway,1,Government,Change to an active call off or contract,APPS,0,1 - Possibility,11.52,2025-09-30
+71,188,Fjordstien Reiser -Travel Booking Portal Upgrade,,1 - Possibility,300000,10,2025-11-30,Managed services,1,Norway,1,Government,New call off (Agreement on existing contract),APPS,0,1 - Possibility,11.52,2025-11-30
+72,189,Arktisk Drift -IT Infrastructure Consolidation,,1 - Possibility,630000,10,2025-08-31,Resources,1,Norway,3,TMT,,APPS,630000,0 - Planning,11.52,2025-08-31
+73,190,Vikholmen AS -Document Management System,,1 - Possibility,630000,10,2025-12-31,Resources,1,Norway,3,Energy,,APPS;DPS,630000,0 - Planning,11.52,2025-12-31
+74,193,Havgløtt Regnskapskontor -Cloud Accounting Migration,,1 - Possibility,630000,10,2025-06-30,Resources,1,Norway,3,NGO,,APPS,630000,0 - Planning,11.52,2025-06-30
+75,194,Solhaug IT-Løsninger -Custom App Development Project,,0 - Planning,7560000,0,2025-11-01,Project,3,Norway,12,DHS,,APPS,7560000,0 - Planning,11.52,2025-11-01
+76,195,Kystfjord Betong -Construction Data Platform Rollout,T&M (No estimates or cap),1 - Possibility,1260000,10,2025-10-31,Resources,1,Norway,6,FS,New call off (Agreement on existing contract),APPS,1260000,0 - Planning,11.52,2025-10-31
+77,196,Granly Auto -Dealership CRM Implementation,,1 - Possibility,300000,10,2025-09-30,Resources,0,Sweden,0,TMT,,,0,1 - Possibility,11.31,2025-09-30
+78,200,Lynås Elektro -Smart Building Automation,,1 - Possibility,630000,10,2025-09-30,Resources,1,Norway,3,FS,,APPS;DPS;BD;Advisory,630000,0 - Planning,11.52,2025-09-30

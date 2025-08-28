@@ -1,0 +1,19 @@
+{
+    "objects": [
+        {
+            "query": "SELECT Id, Name, Rate__c FROM Currency__c",
+            "externalId": "Id",
+            "operation": "Insert"
+        },
+        {
+            "query": "SELECT Id, Account.Id, Name, Contract_Price_Model__c, StageName, Amount, Probability, CloseDate, Type, Consultants__c, Country__c, Months__c, Sector__c, Contract_Category__c, Business_Unit__c, Amount_Old_Value__c, StageName_Priorvalue__c, Eur_Rate__c, Project_Start_Date__c FROM Opportunity ",
+            "externalId": "Id",
+            "operation": "Insert"
+        },
+        {
+            "query": "SELECT Id, Name, Type, Country__c, Region__c, Blocked__c FROM Account",
+            "externalId": "Id",
+            "operation": "Insert"
+        }
+    ]
+}

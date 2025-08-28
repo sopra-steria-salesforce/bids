@@ -2,9 +2,8 @@
     "packageDirectories": [
         {
             "path": "force-app",
-            "package": "platform-base",
-            "versionNumber": "1.9.0.NEXT",
-            "versionDescription": "Base package for utility methods, reusable LWCs and core data model",
+            "package": "bids",
+            "versionNumber": "0.1.0.NEXT",
             "default": true,
             "dependencies": [
                 {
@@ -21,6 +20,10 @@
                 },
                 {
                     "package": "trigger-actions-framework@0.3.2"
+                },
+                {
+                    "package": "platform-base",
+                    "versionNumber": "1.8.0.LATEST"
                 }
             ]
         }
