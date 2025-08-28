@@ -4,7 +4,7 @@ on:
     types: [opened, edited]
 env:
   BRANCH_PREFIXES: (feature|bug|fix|docs|refactor|test) #! additions here are NOT enough (do a global search for e.g. refactor)
-  BRANCHES: (FKP|SPESP) # changes here are enough
+  BRANCHES: (CIS|SPESP) # changes here are enough
 jobs:
   init:
     name: init
@@ -84,16 +84,16 @@ jobs:
       - name: Check branch name
         uses: deepakputhraya/action-branch-name@master
         with:
-          regex: '^(cleanup\/.+|sync\/.+|CI\/.+)|(dev|preprod|main|master|test)|(${{ env.BRANCH_PREFIXES }}\/${{ env.BRANCHES }}-[0-9]+(-|_)([A-z]|[0-9]|-|_)+)$'
+          regex: '^(cleanup\/.+|sync\/.+|CI\/.+)|(dev|uat|main|master|test)|(${{ env.BRANCH_PREFIXES }}\/${{ env.BRANCHES }}-[0-9]+(-|_)([A-z]|[0-9]|-|_)+)$'
           # must be either:
           # cleanup/my-cleanup
           # dev
-          # preprod
+          # uat
           # test
           # master
           # main
           # CI/package-version-update
-          # feature/FKP-22-my-feature
+          # feature/CIS-22-my-feature
 
       # Post Error Comment
       - name: Post Error Comment
@@ -116,7 +116,7 @@ jobs:
               - `bug`
 
             - Allowed Jira-projects (must be uppercase)
-              - `FKP`
+              - `CIS`
               - `SPESP`
 
             - Branch description
@@ -136,7 +136,7 @@ jobs:
     continue-on-error: true
     runs-on: ubuntu-latest
     steps:
-      # When the PR consists of multiple commits, the title is based on the branch name. #* E.g. feature/FKP-123-my-feature → Feature/FKP 123 my feature
+      # When the PR consists of multiple commits, the title is based on the branch name. #* E.g. feature/CIS-123-my-feature → Feature/CIS 123 my feature
       - run: echo "DEFAULT_TITLE=$(echo "${{ github.event.pull_request.title }}" | tr '[:upper:]' '[:lower:]' | grep -Pq '^${{ env.BRANCH_PREFIXES }}\/\w+\s\d+.+$' && echo true || echo false)" >> $GITHUB_ENV
 
       # Test regex her https://playcode.io
@@ -188,7 +188,7 @@ jobs:
       - name: Validate PR title
         uses: deepakputhraya/action-pr-title@v1.0.2
         with:
-          regex: '^\[((${{ env.BRANCHES }}-\d*)|(CLEANUP|SYNC|CI|))\].*$' # must be "[FKP-22] my feature", "[CLEANUP] my change" or "[CI] my change"
+          regex: '^\[((${{ env.BRANCHES }}-\d*)|(CLEANUP|SYNC|CI|))\].*$' # must be "[CIS-22] my feature", "[CLEANUP] my change" or "[CI] my change"
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       # Post Error Comment
@@ -201,5 +201,5 @@ jobs:
           body: |
             # ❌ Error — Bad Pull Request title
 
-            All pull request names must begin with `[FKP-123] your feature here`.
+            All pull request names must begin with `[CIS-123] your feature here`.
             This should normally be done automatically for you, if you named your branch correctly.

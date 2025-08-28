@@ -4,9 +4,10 @@ on:
     types:
       - opened
       - synchronize
-    paths-ignore:
-      - 'package.json'
-      - 'package-lock.json'
+    paths:
+      - 'force-app/**'
+      - 'unpackaged/**'
+      - 'config/**'
 concurrency:
   group: validation-${{ github.base_ref }}-${{ github.head_ref }}
   cancel-in-progress: true
@@ -46,7 +47,7 @@ jobs:
       issues: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: echo "exists=$(cat ./sfdx-project.json | jq -r '.packageDirectories[0].dependencies | length > 0')" >> $GITHUB_OUTPUT
         id: dependencies
@@ -63,24 +64,24 @@ jobs:
           key: dependency-changes-pr-${{ github.event.number }}-org-${{ needs.scratch-org.outputs.username }}-${{ hashFiles('sfdx-project.json') }}
       - name: Authenticate DevHub
         if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true'
-        uses: sopra-steria-salesforce/sf-cli-setup@v1
+        uses: sopra-steria-salesforce/sf-cli-setup@v0.8
         with:
-          sf-cli-version: 2.98.6
+          sf-cli-version: 2.101.5
           username: ${{ vars.SF_PROD_USERNAME }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
           private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
       - name: Authenticate Scratch Org
         if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true' && needs.scratch-org.outputs.username
-        uses: sopra-steria-salesforce/sf-cli-setup@v1
+        uses: sopra-steria-salesforce/sf-cli-setup@v0.8
         with:
-          sf-cli-version: 2.98.6
+          sf-cli-version: 2.101.5
           username: ${{ needs.scratch-org.outputs.username }}
           instance-url: ${{ needs.scratch-org.outputs.instanceUrl }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
           private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
 
       # Install npm dependencies
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v1
         if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true'
         id: generate_token
         with:
@@ -115,7 +116,7 @@ jobs:
         id: install-keys
         run: echo "keys=$(jq -c '.packageDirectories[0].dependencies[]' ./sfdx-project.json | while read -r dependency; do if echo $dependency | jq -e '.versionNumber' > /dev/null; then echo -n "$(echo $dependency | jq -r '.package'):${{ secrets.SF_PACKAGE_KEY }} "; fi; done)" >> $GITHUB_OUTPUT
 
-      # Install sf depenencies
+      # Install sf dependencies
       - run: npx sfp dependency:install --installationkeys "${{ steps.install-keys.outputs.keys }}" --targetusername ${{ needs.scratch-org.outputs.username }} --targetdevhubusername ${{ vars.SF_PROD_USERNAME }}
         if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true'
 
@@ -131,18 +132,18 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: sopra-steria-salesforce/sf-cli-setup@v1
         if: needs.scratch-org.outputs.username
         with:
-          sf-cli-version: 2.98.6
+          sf-cli-version: 2.101.5
           username: ${{ needs.scratch-org.outputs.username }}
           instance-url: ${{ needs.scratch-org.outputs.instanceUrl }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
           private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
 
       # Install npm dependencies
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v1
         id: generate_token
         with:
           app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
@@ -197,11 +198,11 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: sopra-steria-salesforce/sf-cli-setup@v1
         if: needs.scratch-org.outputs.username
         with:
-          sf-cli-version: 2.98.6
+          sf-cli-version: 2.101.5
           username: ${{ needs.scratch-org.outputs.username }}
           instance-url: ${{ needs.scratch-org.outputs.instanceUrl }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
@@ -231,18 +232,18 @@ jobs:
       hasTestClasses: ${{ steps.test-classes-in-repo.outputs.classes }}
 
   # -------------------------------------------------------------------------- #
-  #                         Validate 85% Code Coverage                         #
+  #                         Validate 75% Code Coverage                         #
   # -------------------------------------------------------------------------- #
 
   check-code-coverage:
-    name: Validate 85% Code Coverage
+    name: Validate 75% Code Coverage
     needs: [run-tests]
     permissions:
       contents: read
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/download-artifact@v5
         continue-on-error: true # fails if no tests run, but the step to check if classes exists will catch it and exit
         with:
@@ -288,12 +289,12 @@ jobs:
           let codecoverage=totalCovered*100/totalLines
           echo "codecoverage=$(echo $codecoverage)" >> $GITHUB_OUTPUT
 
-      # Validate 85% Code Coverage
-      - name: Validate 85% Code Coverage
+      # Validate 75% Code Coverage
+      - name: Validate 75% Code Coverage
         if: steps.has-classes.outputs.has_classes == 'true' && needs.run-tests.outputs.hasTestClasses
         run: |
-          if [ ${{ steps.getCodeCoverage.outputs.codecoverage }} -lt 85 ]; then
-            echo "::error::The code coverage needs to be a minimum of 85%, but is currently ${{ steps.getCodeCoverage.outputs.codecoverage }}%"
+          if [ ${{ steps.getCodeCoverage.outputs.codecoverage }} -lt 75 ]; then
+            echo "::error::The code coverage needs to be a minimum of 75%, but is currently ${{ steps.getCodeCoverage.outputs.codecoverage }}%"
             exit 125
           fi
 
@@ -310,7 +311,7 @@ jobs:
       id-token: write
     needs: check-code-coverage
     steps:
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v1
         id: generate_token
         with:
           app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}

@@ -1,0 +1,89 @@
+Id,Name,Type,Country__c,Region__c,Blocked__c
+1,Nordvik Solutions AS,Customer,Norway,Stavanger,FALSE
+2,Fjordlys Consulting,Prospect,Norway,Stavanger,FALSE
+3,Blåberg Energi,Prospect,Norway,Oslo,FALSE
+4,Vik & Sønner AS,Prospect,Sweden,,FALSE
+5,Polarstrand Transport,Prospect,Norway,Oslo,FALSE
+6,GrønnDal Entreprenør,Customer,Sweden,,FALSE
+7,Sørfjord Data,Customer,US,,TRUE
+8,Havblikk Marine AS,Prospect,Sweden,,FALSE
+9,OsloTeknikk,Customer,Norway,Oslo,FALSE
+10,Lysengen Design,Customer,Norway,Oslo,FALSE
+11,Nordhavn Mat AS,Prospect,Sweden,,FALSE
+12,Fjellstrøm IT,Customer,Sweden,,FALSE
+13,Vestmark Rørservice,Customer,Norway,Trondheim,FALSE
+14,Elvebredd Elektro,Customer,Sweden,,FALSE
+15,Aurora Bygg og Anlegg,Prospect,Sweden,,FALSE
+16,Boreal Finans AS,Prospect,Sweden,,FALSE
+17,Solbrekka Eiendom,Prospect,Great Britain,,FALSE
+18,Tindefjell Turistservice,Prospect,Norway,,FALSE
+19,Havørna Regnskap,Customer,Sweden,,FALSE
+20,Granly Kantine,Customer,Norway,Trondheim,FALSE
+21,Kystvind Shipping,Prospect,Sweden,,FALSE
+22,Arktisk Lys Reklame,Prospect,Sweden,,FALSE
+23,Varden Auto,Customer,Norway,Stavanger,FALSE
+24,Himmelblå Produkter,Customer,Denmark,,FALSE
+25,Snøtind AS,Customer,Sweden,,FALSE
+26,Nordstrand Kulturservice,Prospect,Norway,,FALSE
+27,Lyngbråten Landbruk,Customer,Norway,Oslo,FALSE
+28,Sjøbris Catering,Customer,Sweden,,FALSE
+29,Rødli Rør og Varme,Prospect,Sweden,,FALSE
+30,Stormheim IT-Tjenester,Prospect,Norway,,FALSE
+31,Vestfjord Verksted,Prospect,Denmark,Bergen,FALSE
+32,Havkraft AS,Scale up Prospect,Norway,Kristiansand,FALSE
+33,Skogholt Sagbruk,Prospect,Norway,Oslo,FALSE
+34,Granitbygg AS,Scale up Prospect,Norway,,FALSE
+35,Røysland Rengjøring,Scale up Prospect,Norway,,FALSE
+36,Vinterdal Media,Prospect,Sweden,,FALSE
+37,Elveøy Fiskeri,Prospect,Sweden,,FALSE
+38,Polarhavn Logistikk,Prospect,Denmark,,FALSE
+39,Kraftlyd Musikkstudio,Prospect,Sweden,,FALSE
+40,Blåfjell Bad & Kjøkken,Customer,Norway,Oslo,FALSE
+41,Havtind Eiendomsutvikling,Customer and Partner,Sweden,K√∏benhavn,FALSE
+42,Gullfoss Regnskap,Customer,Norway,Oslo,FALSE
+43,Lynge Servicepartner,Partner,Sweden,,FALSE
+44,Ørnli Blomster,Partner,Sweden,,FALSE
+45,Sandli Bakeri,Customer,Norway,Oslo,FALSE
+46,Månestråle Foto,Customer,Sweden,,FALSE
+47,Frostvik Elektroservice,Prospect,Sweden,,FALSE
+48,Isbreen Varehandel,Partner,Denmark,,FALSE
+49,Solvik Renhold,Prospect,Sweden,,FALSE
+50,Vargøy Mekaniske Verksted,Customer,Norway,,FALSE
+51,Fjordglimt Barnehage,Customer,Denmark,K√∏benhavn,FALSE
+52,Bjørnefjell Maskin,Customer,Norway,Oslo,FALSE
+53,Nordberg Transportservice,Customer,Norway,Oslo,FALSE
+54,Lofotmat AS,Prospect,Denmark,,FALSE
+55,Trollheim Turbusser,Prospect,Denmark,,FALSE
+56,Lysebotn Konsulenttjenester,Customer,Norway,Oslo,FALSE
+57,Kysthavn Malerservice,Customer,Sweden,,FALSE
+58,Ravnås Revisjon,Partner,Sweden,,FALSE
+59,Østerli Teknologi,Prospect,Sweden,,FALSE
+60,Frosthavn Engineering,Partner,Sweden,,FALSE
+61,Havbris Husdesign,Prospect,Denmark,K√∏benhavn,FALSE
+62,Vinterlys Grafisk,Scale up Prospect,Norway,Oslo,FALSE
+63,Åsly Entreprenør,Scale up Prospect,Norway,Oslo,FALSE
+64,Tindbråten Catering,Scale up Prospect,Norway,Oslo,FALSE
+65,Blåskjell Marine,Scale up Prospect,Norway,Oslo,TRUE
+66,Sørvik Service AS,Scale up Prospect,Norway,,FALSE
+67,Elveland Bygg,Scale up Prospect,Norway,Oslo,FALSE
+68,Grøtli Gartneri,Scale up Prospect,Norway,Oslo,FALSE
+69,Nordfjell Mekanikk,Scale up Prospect,Norway,,FALSE
+70,Bergstrand Trevare,Scale up Prospect,Norway,Oslo,FALSE
+71,Fjordstien Reiser,Scale up Prospect,Norway,,FALSE
+72,Arktisk Drift,Scale up Prospect,Norway,,FALSE
+73,Vikholmen AS,Scale up Prospect,Norway,,TRUE
+74,Havgløtt Regnskapskontor,Prospect,Norway,Stavanger,FALSE
+75,Solhaug IT-Løsninger,Prospect,Norway,Oslo,FALSE
+76,Kystfjord Betong,Customer,Norway,Stavanger,FALSE
+77,Granly Auto,Prospect,Sweden,,FALSE
+78,Lynås Elektro,Partner,Denmark,,FALSE
+79,Stormdal Kjøl & Frys,Prospect,Norway,Oslo,FALSE
+80,Boreal Elektroservice,Customer,Denmark,K√∏benhavn,FALSE
+81,Nordvind Revisjon,Prospect,Denmark,K√∏benhavn,FALSE
+82,Fjellberg Byggpartner,Prospect,Norway,Oslo,FALSE
+83,Havørn Rørservice,Customer,Norway,Oslo,FALSE
+84,Lyngstrand Bilverksted,Prospect,Sweden,,FALSE
+85,Elvegløtt AS,Prospect,Sweden,,FALSE
+86,Isfjord Shipping,Prospect,Denmark,K√∏benhavn,FALSE
+87,Sørmark Maskinutleie,Customer,Norway,Stavanger,FALSE
+88,Blåstein Interiør,Prospect,Sweden,,FALSE

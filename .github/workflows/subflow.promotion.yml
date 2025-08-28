@@ -19,10 +19,10 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: sopra-steria-salesforce/sf-cli-setup@v1
         with:
-          sf-cli-version: 2.98.6
+          sf-cli-version: 2.101.5
           username: ${{ vars.SF_PROD_USERNAME }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
           private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
@@ -56,10 +56,10 @@ jobs:
       id-token: write
     if: fromJSON(needs.check-promotion.outputs.shouldPromote)
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: sopra-steria-salesforce/sf-cli-setup@v1
         with:
-          sf-cli-version: 2.98.6
+          sf-cli-version: 2.101.5
           username: ${{ vars.SF_PROD_USERNAME }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
           private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
@@ -80,24 +80,24 @@ jobs:
     needs: check-promotion
     if: fromJSON(needs.check-promotion.outputs.shouldPromote)
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set Main Branch
         run: |
           echo "MAIN_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')" >> $GITHUB_ENV
 
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v1
         id: generate_token
         with:
           app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
           private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ env.MAIN_BRANCH }}
           token: ${{ steps.generate_token.outputs.token }}
 
       # Update version number
       - name: Update version number
-        uses: sopra-steria-salesforce/sf-unlocked-package-version-updater@v2
+        uses: sopra-steria-salesforce/sf-unlocked-package-version-updater@v1
 
       # git commit and push
       - uses: fregante/setup-git-user@v2
@@ -115,7 +115,7 @@ jobs:
       pull-requests: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Get New Release Name
         run: echo "name=$(echo ${{ inputs.TAG }} | sed 's|\(.*\)\..*|\1|')" >> $GITHUB_OUTPUT

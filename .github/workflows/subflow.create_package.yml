@@ -34,10 +34,10 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: sopra-steria-salesforce/sf-cli-setup@v1
         with:
-          sf-cli-version: 2.98.6
+          sf-cli-version: 2.101.5
           username: ${{ vars.SF_PROD_USERNAME }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
           private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
@@ -46,7 +46,7 @@ jobs:
       - name: Set Environment Variables
         uses: falti/dotenv-action@v1.1.4
         with:
-          path: .env/${{ (github.ref_name == 'master' || github.ref_name == 'main') && 'prod' || github.ref_name }} # imports .env/prod for master/main, otherwise .env/branchname (e.g., .env/preprod)
+          path: .env/${{ (github.ref_name == 'master' || github.ref_name == 'main') && 'prod' || github.ref_name }} # imports .env/prod for master/main, otherwise .env/branchname (e.g., .env/uat)
           ensure-exists: false
           export-variables: true
           keys-case: bypass
@@ -58,10 +58,12 @@ jobs:
           if [[ -f ${{ env.SNAPSHOT_CONFIG_FILE }} && ${{ inputs.useSnapshot }} = true ]]; then
             snapshotStatus=$(sf org get snapshot --snapshot full_snapshot --json | jq -r '.result.Status')
             if [ $snapshotStatus = 'Active' ]; then
+              echo "Using Snapshot config file"
               echo "file=${{ env.SNAPSHOT_CONFIG_FILE }}" >> $GITHUB_OUTPUT
               exit 0
             fi
           fi
+          echo "Using regular config file"
           echo "file=${{ env.CONFIG_FILE }}" >> $GITHUB_OUTPUT
 
       # Create main package version
@@ -78,8 +80,8 @@ jobs:
             ${{ inputs.skipValidation && '--skip-validation' || '--code-coverage' }} \
             | tee output
 
-      # Create package version on a branch for preprod
-      - name: Create package version on a branch for preprod
+      # Create package version on a branch for uat
+      - name: Create package version on a branch for uat
         if: github.ref_name != 'master' && github.ref_name != 'main'
         run: |
           packageName=$(cat sfdx-project.json | jq '.packageDirectories | map(select(.package != null))[0].package' -r)
@@ -164,6 +166,7 @@ jobs:
     uses: ./.github/workflows/subflow.slack.yml
     secrets: inherit
     with:
+      env: ${{ ((github.ref_name == 'master' || github.ref_name == 'main') && 'qa') || github.ref_name }}
       job_name: slack report package error
       post-to-deployment-channel: true
       blocks: '[{"type":"header","text":{"type":"plain_text","text":"[${{ needs.create-package.outputs.repo_name }}] Package Creation Failed in ${{ github.ref_name }}","emoji":true}},{"type":"section","fields":[{"type":"mrkdwn","text":"*Status*\n🔴 Failed to create package\n<!channel>, please fix."},{"type":"mrkdwn","text":"*Created By*\n<https://github.com/${{ github.actor }}|${{ github.actor }}>"}],"accessory":{"type":"overflow","options":[{"text":{"type":"plain_text","text":"😵 View Error"},"url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"},{"text":{"type":"plain_text","text":"🖥️ View Commit"},"url":"https://github.com/${{ github.repository }}/commit/${{ github.sha }}"}]}}]'

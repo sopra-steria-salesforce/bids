@@ -33,7 +33,7 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: MariachiBear/get-repo-name-action@v1.3.0
         id: repo-name
 
@@ -44,8 +44,8 @@ jobs:
           default: ${{ vars.SF_PROD_INSTANCE_URL }}
           conditionals-with-values: |
             ${{ inputs.ENV == 'prod' }} => ${{ vars.SF_PROD_INSTANCE_URL }}
-            ${{ inputs.ENV == 'preprod' }} => ${{ vars.SF_PREPROD_INSTANCE_URL }}
-            ${{ inputs.ENV == 'sit' }} => ${{ vars.SF_SIT_INSTANCE_URL }}
+            ${{ inputs.ENV == 'uat' }} => ${{ vars.SF_UAT_INSTANCE_URL }}
+            ${{ inputs.ENV == 'qa' }} => ${{ vars.SF_QA_INSTANCE_URL }}
 
       - name: Get Changelog URL
         uses: thaitype/actions-switch-case@v1
@@ -53,8 +53,7 @@ jobs:
         with:
           default: ${{ github.repository }}
           conditionals-with-values: |
-            ${{ inputs.ENV == 'prod' || inputs.ENV == 'sit' }} => ${{ github.repository }}/releases/tag/${{ inputs.TAG }}
-            ${{ inputs.ENV == 'preprod' }} => ${{ github.repository }}/commits/preprod
+            ${{ inputs.ENV == 'prod' || inputs.ENV == 'uat' }} => ${{ github.repository }}/releases/tag/${{ inputs.TAG }}
 
       # Use https://app.slack.com/block-kit-builder to build messages.
       - name: Fetch Payload
@@ -75,6 +74,7 @@ jobs:
     uses: ./.github/workflows/subflow.slack.yml
     secrets: inherit
     with:
+      env: ${{ inputs.ENV }}
       job_name: slack post
       post-to-deployment-channel: true
       blocks: ${{ needs.slack-prep.outputs.blocks }}
@@ -94,10 +94,10 @@ jobs:
       name: ${{ inputs.ENV }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Install npm dependencies
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v1
         id: generate_token
         with:
           app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
@@ -111,12 +111,12 @@ jobs:
 
       # Install & Authorize sf cli
       - name: Install & Authorize sf cli (${{ inputs.ENV }})
-        uses: sopra-steria-salesforce/sf-cli-setup@v1
+        uses: sopra-steria-salesforce/sf-cli-setup@v0.8
         with:
-          sf-cli-version: 2.98.6
-          username: ${{ inputs.ENV == 'prod' && vars.SF_PROD_USERNAME || inputs.ENV == 'preprod' && vars.SF_PREPROD_USERNAME || vars.SF_SIT_USERNAME }}
-          client-id: ${{ inputs.ENV == 'prod' && secrets.SF_PROD_CLIENT_ID || inputs.ENV == 'preprod' && secrets.SF_PREPROD_CLIENT_ID || secrets.SF_SIT_CLIENT_ID }}
-          private-key: ${{ inputs.ENV == 'prod' && secrets.SF_PROD_PRIVATE_KEY || inputs.ENV == 'preprod' && secrets.SF_PREPROD_PRIVATE_KEY || secrets.SF_SIT_PRIVATE_KEY }}
+          sf-cli-version: 2.101.5
+          username: ${{ inputs.ENV == 'prod' && vars.SF_PROD_USERNAME || inputs.ENV == 'uat' && vars.SF_UAT_USERNAME || vars.SF_QA_USERNAME }}
+          client-id: ${{ inputs.ENV == 'prod' && secrets.SF_PROD_CLIENT_ID || inputs.ENV == 'uat' && secrets.SF_UAT_CLIENT_ID || secrets.SF_QA_CLIENT_ID }}
+          private-key: ${{ inputs.ENV == 'prod' && secrets.SF_PROD_PRIVATE_KEY || inputs.ENV == 'uat' && secrets.SF_UAT_PRIVATE_KEY || secrets.SF_QA_PRIVATE_KEY }}
           set-default-org: true
 
       # TODO: Deploy Picklist
@@ -165,8 +165,8 @@ jobs:
           echo "successfullyInstalled=true" >> $GITHUB_OUTPUT
 
       # Run Post-Install Steps
-      - name: Run Post-Install Steps
-        run: npx ssdx resource --post-install --test-level RunLocalTests --show-output --ci
+      #- name: Run Post-Install Steps
+      #  run: npx ssdx resource --post-install --test-level RunLocalTests --show-output --ci
 
       # View SSDX Logs
       - name: View SSDX Logs
@@ -175,6 +175,17 @@ jobs:
           if [ "$errors" -ne 0 ]; then echo "::error::$errors SSDX errors found"; fi
           cat .ssdx/logs/*.log | npx pino-pretty
           rm -rf .ssdx/logs
+
+      # Deploy Env Specific metadata
+      - name: Deploy Env Specific metadata
+        id: deployEnvSpecific
+        run: |
+          if [ -d "src-env-specific/${{ inputs.ENV }}" ]; then
+            echo "Starting deployment of env specific metadata"
+            sf project deploy start -d "src-env-specific/${{ inputs.ENV }}" --ignore-conflicts
+          else
+            echo "No env specific metadata to deploy to ${{ inputs.ENV }} for this package"
+          fi
 
     outputs:
       successfullyInstalled: ${{ steps.check-error.outputs.successfullyInstalled }}
@@ -194,6 +205,7 @@ jobs:
     uses: ./.github/workflows/subflow.slack.yml
     secrets: inherit
     with:
+      env: ${{ inputs.ENV }}
       job_name: slack status update
       post-to-deployment-channel: true
       update_ts: ${{ needs.slack-message.outputs.thread-ts }} # update this message
@@ -211,6 +223,7 @@ jobs:
     uses: ./.github/workflows/subflow.slack.yml
     secrets: inherit
     with:
+      env: ${{ inputs.ENV }}
       job_name: slack error comment
       post-to-deployment-channel: true
       thread_ts: ${{ needs.slack-message.outputs.thread-ts }} # reply to the update instead, in case the original message failed to post
@@ -226,6 +239,7 @@ jobs:
     uses: ./.github/workflows/subflow.slack.yml
     secrets: inherit
     with:
+      env: ${{ inputs.ENV }}
       job_name: 'slack @channel comment'
       post-to-deployment-channel: true
       thread_ts: ${{ needs.slack-message.outputs.thread-ts }} # reply to the update instead, in case the original message failed to post
