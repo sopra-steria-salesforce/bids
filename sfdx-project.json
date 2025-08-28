@@ -2,10 +2,8 @@
     "packageDirectories": [
         {
             "path": "force-app",
-            "package": "platform-base",
-            "versionNumber": "1.9.0.NEXT",
-            "versionDescription": "Base package for utility methods, reusable LWCs and core data model",
-            "default": true,
+            "package": "bids",
+            "versionNumber": "0.1.0.NEXT",
             "dependencies": [
                 {
                     "package": "Nebula Logger@4.16.0.2"
@@ -21,11 +19,15 @@
                 },
                 {
                     "package": "trigger-actions-framework@0.3.2"
+                },
+                {
+                    "package": "platform-base",
+                    "versionNumber": "1.8.0.LATEST"
                 }
             ]
         }
     ],
-    "name": "soprasteria-crm",
+    "name": "bids",
     "namespace": "",
     "sfdcLoginUrl": "https://login.salesforce.com",
     "sourceApiVersion": "63.0",
@@ -34,8 +36,8 @@
         "DashboardsGSP@2.9.0.1": "04t1n000002WswiAAC",
         "Pardot@5.5.0.2": "04tKY000000kevRYAQ",
         "Lightning Messaging Utility@1.5.0.1": "04t5w000003gWWBAA2",
-        "platform-base": "0HoP100000001CDKAY",
-        "trigger-actions-framework@0.3.2": "04tKY000000PdZOYA0"
+        "trigger-actions-framework@0.3.2": "04tKY000000PdZOYA0",
+        "platform-base": "0HoP100000001CDKAY"
     },
     "sourceBehaviorOptions": [
         "decomposeWorkflowBeta"
