@@ -160,8 +160,8 @@ jobs:
           - require_approvers
           - require_up_to_date_branch
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/create-github-app-token@v1
+      - uses: actions/checkout@v5
+      - uses: actions/create-github-app-token@v2
         id: generate_token
         with:
           app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
@@ -250,8 +250,8 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/create-github-app-token@v1
+      - uses: actions/checkout@v5
+      - uses: actions/create-github-app-token@v2
         id: generate_token
         with:
           app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
@@ -282,7 +282,7 @@ jobs:
         with:
           app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
           private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: MariachiBear/get-repo-name-action@v1.3.0
         id: repo-name
       - uses: sopra-steria-salesforce/sf-cli-setup@v0.8
@@ -318,7 +318,7 @@ jobs:
         with:
           app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
           private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           token: ${{ steps.generate_token.outputs.token }} # allows push to master
       - uses: MariachiBear/get-repo-name-action@v1.3.0
@@ -400,8 +400,8 @@ jobs:
       matrix:
         branch: [uat]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/create-github-app-token@v1
+      - uses: actions/checkout@v5
+      - uses: actions/create-github-app-token@v2
         id: generate_token
         with:
           app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}

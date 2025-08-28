@@ -4,7 +4,6 @@
             "path": "force-app",
             "package": "bids",
             "versionNumber": "0.1.0.NEXT",
-            "default": true,
             "dependencies": [
                 {
                     "package": "Nebula Logger@4.16.0.2"
@@ -28,7 +27,7 @@
             ]
         }
     ],
-    "name": "soprasteria-crm",
+    "name": "bids",
     "namespace": "",
     "sfdcLoginUrl": "https://login.salesforce.com",
     "sourceApiVersion": "63.0",

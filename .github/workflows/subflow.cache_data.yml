@@ -10,7 +10,7 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: mkdir -p ${{ github.event.client_payload.folder }}
       - run: echo -n "${{ github.event.client_payload.username }}" >> ${{ github.event.client_payload.folder }}/${{ github.event.client_payload.username_file }}
