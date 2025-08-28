@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       skip-validation:
-        description: 'Skip validation? (package will only be deployable to preprod)'
+        description: 'Skip validation? (package will only be deployable to uat)'
         required: false
         type: boolean
       use-snapshot:
@@ -14,7 +14,6 @@ on:
     branches:
       - master
       - main
-      - preprod
     paths:
       - 'force-app/**'
 jobs:
@@ -34,7 +33,7 @@ jobs:
   # ################################################################### #
 
   deploy:
-    name: ${{ ((github.ref_name == 'master' || github.ref_name == 'main') && 'sit') || github.ref_name }}
+    name: 'uat'
     if: needs.create-package.outputs.successfullyCreatedPackage == 'true'
     needs: [create-package]
     permissions:
@@ -43,7 +42,7 @@ jobs:
     uses: ./.github/workflows/subflow.deploy_package.yml
     secrets: inherit
     with:
-      ENV: ${{ ((github.ref_name == 'master' || github.ref_name == 'main') && 'sit') || github.ref_name }} # use sit as env if master/main, because we're deployed the package to sit. Else, use branch name (preprod)
+      ENV: 'uat'
       PACKAGE_ID: ${{ needs.create-package.outputs.packageId }}
       TAG: ${{ needs.create-package.outputs.newVersionTag }}
       POST_TO_SLACK: true
@@ -58,7 +57,7 @@ jobs:
       actions: read
       id-token: write
       pull-requests: read
-    # always() to ensure posting the release if SIT install failed
+    # always() to ensure posting the release if UAT install failed
     if: always() && needs.create-package.outputs.successfullyCreatedPackage == 'true' && (github.ref_name == 'master' || github.ref_name == 'main')
     uses: ./.github/workflows/subflow.create_release.yml
     secrets: inherit

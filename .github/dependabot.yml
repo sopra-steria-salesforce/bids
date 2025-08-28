@@ -3,9 +3,5 @@ updates:
   - package-ecosystem: npm
     directory: '/'
     schedule:
-      interval: monthly
+      interval: yearly
     open-pull-requests-limit: 10
-  - package-ecosystem: github-actions
-    directory: '/.github/workflows'
-    schedule:
-      interval: monthly

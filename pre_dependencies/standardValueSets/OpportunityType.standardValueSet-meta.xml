@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<StandardValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <sorted>false</sorted>
+    <standardValue>
+        <fullName>Broker</fullName>
+        <default>false</default>
+        <label>Broker</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Capacity agreement</fullName>
+        <default>false</default>
+        <label>Capacity agreement</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Frame agreement</fullName>
+        <default>false</default>
+        <label>Frame agreement</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Managed services</fullName>
+        <default>false</default>
+        <label>Managed services</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Managed Services Add-On</fullName>
+        <default>false</default>
+        <label>Managed Services Add-On</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Project</fullName>
+        <default>false</default>
+        <label>Project</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Resources</fullName>
+        <default>false</default>
+        <label>Resources</label>
+    </standardValue>
+</StandardValueSet>

@@ -21,7 +21,7 @@ jobs:
     if: github.event_name == 'issue_comment'
     permissions: write-all
     steps:
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v1
         id: generate_token
         with:
           app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
@@ -170,10 +170,10 @@ jobs:
             - Authentication to the existing scratch org failed (re-run validation to get another)
 
       - name: Authenticate Scratch Org
-        uses: sopra-steria-salesforce/sf-cli-setup@v1
+        uses: sopra-steria-salesforce/sf-cli-setup@v0.8
         if: needs.login.outputs.username
         with:
-          sf-cli-version: 2.98.6
+          sf-cli-version: 2.101.5
           username: ${{ needs.login.outputs.username }}
           instance-url: ${{ needs.login.outputs.instanceUrl }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
