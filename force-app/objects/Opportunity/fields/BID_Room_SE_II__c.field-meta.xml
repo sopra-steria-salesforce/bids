@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>BID_Room_SE_II__c</fullName>
+    <externalId>false</externalId>
+    <formula>IF(Bid_Number__c != &quot;&quot; ,
+HYPERLINK( 
+Bid_Number__c +  BID_URL_Country__c  + &quot;?Title=&quot; + 
+
+SUBSTITUTE( 
+Account_Name__c + &quot; - &quot; + Name, 
+&quot;&amp;&quot;, &quot;og&quot;), Bid_Number__c),&quot;&quot;)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>BID Room SE</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

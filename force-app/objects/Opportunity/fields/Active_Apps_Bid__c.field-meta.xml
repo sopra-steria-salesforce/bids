@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Active_Apps_Bid__c</fullName>
+    <defaultValue>false</defaultValue>
+    <inlineHelpText>Needs to be ticked off to be a subject on APPS BID meeting and GO/NO GO decision in Apps. 
+Must be ticked off for opportunities that will trigger a BCR process, has estimates, fixed price and/or DAD services</inlineHelpText>
+    <label>Active Apps Bid (Case for Bid meeting)</label>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <type>Checkbox</type>
+</CustomField>

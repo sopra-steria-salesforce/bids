@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Opportunity_BID_in_Sharepoint__c</fullName>
+    <description>BID for this opportunity</description>
+    <inlineHelpText>For  URL to OLD bid rooms. For bids created after 05.12.2017, 
+new rooms are automatically assigned in new bid portal.</inlineHelpText>
+    <label>OLD Bid portal. Do not use for new bids</label>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <type>Url</type>
+</CustomField>

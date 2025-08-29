@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>AppsUserBidResponsibility__c</fullName>
+    <externalId>false</externalId>
+    <formula>IF(
+OR (
+$User.Id = Owner.Id,
+$User.Id = Apps_Owner__r.Id,
+$User.Email =  Bid_Manager__r.Email__c, 
+$User.Email =  Bid_Champion__r.Email__c,
+$User.Email =  Solution_Architect__r.Email__c,
+$User.Email =  Delivery_Manager__r.Email__c
+)
+,1,0)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Apps$UserBidResponsibility</label>
+    <precision>18</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <trackHistory>false</trackHistory>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

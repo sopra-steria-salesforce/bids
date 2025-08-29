@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Bid_Team__c</fullName>
+    <description>Used for reporting to Bid Team</description>
+    <formula>IF(
+				OR(
+								TEXT(BID_Office_Owner__r.Business_Unit__c) = &apos;Business Development&apos;,
+								AND(TEXT(BID_Office_Owner__r.Business_Unit__c) = &apos;&apos;,Owners_BU__c = &apos;Business Development&apos;))
+				,TRUE,FALSE)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Bid Team</label>
+    <trackHistory>false</trackHistory>
+    <type>Checkbox</type>
+</CustomField>

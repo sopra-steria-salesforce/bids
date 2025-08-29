@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>BID_Owner_is_in_BID_Team__c</fullName>
+    <description>Use to verify that bid office owner is bid team member, For reports and dashboards</description>
+    <formula>IF(OR(BID_Office_Owner__r.BID_Team_Member__c, Owner.BID_Team_Member__c),TRUE, FALSE)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>BID Owner is in BID Team</label>
+    <trackHistory>false</trackHistory>
+    <type>Checkbox</type>
+</CustomField>

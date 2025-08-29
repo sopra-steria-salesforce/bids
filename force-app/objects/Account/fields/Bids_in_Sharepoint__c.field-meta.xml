@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Bid_Number__c</fullName>
-    <caseSensitive>false</caseSensitive>
-    <externalId>false</externalId>
-    <label>BID Number</label>
-    <length>200</length>
+    <fullName>Bids_in_Sharepoint__c</fullName>
+    <inlineHelpText>URL to Account&apos;s area in the BID portal</inlineHelpText>
+    <label>Bids in Sharepoint</label>
     <required>false</required>
     <trackFeedHistory>false</trackFeedHistory>
     <trackHistory>false</trackHistory>
-    <type>Text</type>
-    <unique>true</unique>
+    <type>Url</type>
 </CustomField>
