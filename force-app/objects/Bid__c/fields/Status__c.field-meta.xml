@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Status__c</fullName>
+    <externalId>false</externalId>
+    <formula>CASE(TEXT(Opportunity__r.StageName),
+&apos;1 - Possibility&apos;,&apos;Mulighet&apos;,
+&apos;2 - RFI&apos;,&apos;RFI&apos;,
+&apos;3 - Prequal&apos;,&apos;Prekval&apos;,
+&apos;4 - Offer&apos;, &apos;Tilbud&apos;,
+&apos;5 - Awarded&apos;, &apos;Tildelt - venter på kontrakt&apos;,
+&apos;Closed Won&apos;, &apos;Vunnet&apos;,
+&apos;Closed Lost&apos;, &apos;Tapt&apos;,
+&apos;Abandoned by Us&apos;, &apos;Forlatt av oss&apos;,
+&apos;Abandoned by Customer&apos;, &apos;Forlatt av kunde&apos;,
+&apos;&apos;)
+
++
+IF(OR(
+TEXT(Opportunity__r.StageName) = &apos;2 - RFI&apos;,
+TEXT(Opportunity__r.StageName) = &apos;3 - Prequal&apos;,
+TEXT(Opportunity__r.StageName) = &apos;4 - Offer&apos;
+),
+CASE(TEXT(Opportunity__r.Status__c),
+&apos;In progress&apos;,&apos; - I arbeid&apos;,
+&apos;Sent&apos;,&apos; - Sendt&apos;,
+&apos;&apos;),
+&apos;&apos;)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Status</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

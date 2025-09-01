@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>BC_Bid_Manager__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <inlineHelpText>Project manager for the offer. Calls in to meetings, organizes templates, creates Teams and delivers the offer. Usually someone from the Bid Office, can also be from BC</inlineHelpText>
+    <label>Advisory Bid Manager</label>
+    <referenceTo>Employee__c</referenceTo>
+    <relationshipLabel>Opportunities (BC Bid Manager)</relationshipLabel>
+    <relationshipName>Opportunities4</relationshipName>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <type>Lookup</type>
+</CustomField>

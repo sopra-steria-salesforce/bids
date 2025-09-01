@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Defective__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Indicates that bid room was defective from production in Sharepoint</description>
+    <label>Defective</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

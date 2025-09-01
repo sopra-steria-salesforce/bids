@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WebLink xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Bid_room</fullName>
+    <availability>online</availability>
+    <displayType>button</displayType>
+    <encodingKey>UTF-8</encodingKey>
+    <height>600</height>
+    <linkType>url</linkType>
+    <masterLabel>Bid room</masterLabel>
+    <openType>sidebar</openType>
+    <protected>false</protected>
+    <url>{! 
+IF(!ISBLANK(  Opportunity.Bid_Number__c ), URLFOR( Opportunity.Bid_portal_URL__c ,null), 
+URLFOR(IF( Opportunity.Owner_Country__c = &apos;Sweden&apos;,
+(&apos;https://steria.sharepoint.com/sites/BidPortal_SE/&apos;+Opportunity.Bid_Number__c),
+(&apos;https://steria.sharepoint.com/sites/intra_sc_tilbud/&apos;+Opportunity.Bid_Number__c )))) 
+}</url>
+</WebLink>

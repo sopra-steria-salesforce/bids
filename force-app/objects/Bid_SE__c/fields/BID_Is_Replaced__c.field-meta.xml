@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>BID_Is_Replaced__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Indicates that Bid has been replaced by another Bid. Used for formula field Account name</description>
+    <label>BID Is Replaced</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

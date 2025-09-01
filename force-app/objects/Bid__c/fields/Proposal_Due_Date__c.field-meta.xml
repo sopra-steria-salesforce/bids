@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Proposal_Due_Date__c</fullName>
+    <description>Previously this referred to to other fields in opportunity for calculation. These fields were removed but this field is still used in BID object</description>
+    <formula>Opportunity__r.Proposal_Due_Date_Time__c</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Proposal Due Date</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

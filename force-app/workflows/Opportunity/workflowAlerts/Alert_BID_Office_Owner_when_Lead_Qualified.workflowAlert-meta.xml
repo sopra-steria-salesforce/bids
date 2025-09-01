@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WorkflowAlert xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Alert_BID_Office_Owner_when_Lead_Qualified</fullName>
+    <description>Alert: BID Office Owner when Lead -&gt;Qualified</description>
+    <protected>false</protected>
+    <recipients>
+        <field>BID_Office_Owner__c</field>
+        <type>userLookup</type>
+    </recipients>
+    <senderType>DefaultWorkflowUser</senderType>
+    <template>Default/HTML_Opportunity_BU_Owner_Stage_Change</template>
+</WorkflowAlert>
