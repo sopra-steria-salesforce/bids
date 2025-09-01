@@ -4,6 +4,9 @@
             "path": "force-app",
             "package": "bids",
             "versionNumber": "0.1.0.NEXT",
+            "seedMetadata": {
+                "path": "pre_dependencies/standardValueSets"
+            },
             "dependencies": [
                 {
                     "package": "Nebula Logger@4.16.0.2"
