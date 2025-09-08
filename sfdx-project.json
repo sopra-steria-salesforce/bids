@@ -3,7 +3,7 @@
         {
             "path": "force-app",
             "package": "bids",
-            "versionNumber": "0.1.0.NEXT",
+            "versionNumber": "0.2.0.NEXT",
             "seedMetadata": {
                 "path": "pre_dependencies/standardValueSets"
             },
