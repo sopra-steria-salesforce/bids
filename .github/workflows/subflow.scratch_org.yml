@@ -95,7 +95,7 @@ jobs:
         continue-on-error: true
         if: steps.check.outputs.cached == 'true'
         with:
-          sf-cli-version: 2.101.5
+          sf-cli-version: 2.104.6
           username: ${{ env.SCRATCH_ORG_USERNAME }}
           instance-url: ${{ env.SCRATCH_ORG_INSTANCE_URL }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
@@ -139,7 +139,7 @@ jobs:
         uses: sopra-steria-salesforce/sf-cli-setup@v0.8
         continue-on-error: true
         with:
-          sf-cli-version: 2.101.5
+          sf-cli-version: 2.104.6
           username: ${{ vars.SF_PROD_USERNAME }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
           private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
@@ -148,7 +148,7 @@ jobs:
         uses: sopra-steria-salesforce/sf-cli-setup@v0.8
         continue-on-error: true
         with:
-          sf-cli-version: 2.101.5
+          sf-cli-version: 2.104.6
           username: ${{ needs.find-org.outputs.username }}
           instance-url: ${{ needs.find-org.outputs.instanceUrl }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
@@ -181,7 +181,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: sopra-steria-salesforce/sf-cli-setup@v1
         with:
-          sf-cli-version: 2.101.5
+          sf-cli-version: 2.104.6
           username: ${{ vars.SF_PROD_USERNAME }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
           private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}

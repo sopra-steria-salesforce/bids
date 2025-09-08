@@ -113,7 +113,7 @@ jobs:
       - name: Install & Authorize sf cli (${{ inputs.ENV }})
         uses: sopra-steria-salesforce/sf-cli-setup@v0.8
         with:
-          sf-cli-version: 2.101.5
+          sf-cli-version: 2.104.6
           username: ${{ inputs.ENV == 'prod' && vars.SF_PROD_USERNAME || inputs.ENV == 'uat' && vars.SF_UAT_USERNAME || vars.SF_QA_USERNAME }}
           client-id: ${{ inputs.ENV == 'prod' && secrets.SF_PROD_CLIENT_ID || inputs.ENV == 'uat' && secrets.SF_UAT_CLIENT_ID || secrets.SF_QA_CLIENT_ID }}
           private-key: ${{ inputs.ENV == 'prod' && secrets.SF_PROD_PRIVATE_KEY || inputs.ENV == 'uat' && secrets.SF_UAT_PRIVATE_KEY || secrets.SF_QA_PRIVATE_KEY }}

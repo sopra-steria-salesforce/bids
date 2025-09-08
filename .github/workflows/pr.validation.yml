@@ -66,7 +66,7 @@ jobs:
         if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true'
         uses: sopra-steria-salesforce/sf-cli-setup@v0.8
         with:
-          sf-cli-version: 2.101.5
+          sf-cli-version: 2.104.6
           username: ${{ vars.SF_PROD_USERNAME }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
           private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
@@ -74,7 +74,7 @@ jobs:
         if: steps.dependencies-cache.outputs.cache-hit != 'true' && steps.dependencies.outputs.exists == 'true' && needs.scratch-org.outputs.username
         uses: sopra-steria-salesforce/sf-cli-setup@v0.8
         with:
-          sf-cli-version: 2.101.5
+          sf-cli-version: 2.104.6
           username: ${{ needs.scratch-org.outputs.username }}
           instance-url: ${{ needs.scratch-org.outputs.instanceUrl }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
@@ -136,7 +136,7 @@ jobs:
       - uses: sopra-steria-salesforce/sf-cli-setup@v1
         if: needs.scratch-org.outputs.username
         with:
-          sf-cli-version: 2.101.5
+          sf-cli-version: 2.104.6
           username: ${{ needs.scratch-org.outputs.username }}
           instance-url: ${{ needs.scratch-org.outputs.instanceUrl }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
@@ -202,7 +202,7 @@ jobs:
       - uses: sopra-steria-salesforce/sf-cli-setup@v1
         if: needs.scratch-org.outputs.username
         with:
-          sf-cli-version: 2.101.5
+          sf-cli-version: 2.104.6
           username: ${{ needs.scratch-org.outputs.username }}
           instance-url: ${{ needs.scratch-org.outputs.instanceUrl }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
