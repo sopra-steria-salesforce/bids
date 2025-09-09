@@ -9,7 +9,7 @@
             },
             "dependencies": [
                 {
-                    "package": "Nebula Logger@4.16.0.2"
+                    "package": "NebulaLogger@4.16.0.2"
                 },
                 {
                     "package": "DashboardsGSP@2.9.0.1"
@@ -18,7 +18,7 @@
                     "package": "Pardot@5.5.0.2"
                 },
                 {
-                    "package": "Lightning Messaging Utility@1.5.0.1"
+                    "package": "LightningMessagingUtility@1.5.0.1"
                 },
                 {
                     "package": "trigger-actions-framework@0.3.2"
@@ -35,10 +35,10 @@
     "sfdcLoginUrl": "https://login.salesforce.com",
     "sourceApiVersion": "63.0",
     "packageAliases": {
-        "Nebula Logger@4.16.0.2": "04t5Y0000015pGyQAI",
+        "NebulaLogger@4.16.0.2": "04t5Y0000015pGyQAI",
         "DashboardsGSP@2.9.0.1": "04t1n000002WswiAAC",
         "Pardot@5.5.0.2": "04tKY000000kevRYAQ",
-        "Lightning Messaging Utility@1.5.0.1": "04t5w000003gWWBAA2",
+        "LightningMessagingUtility@1.5.0.1": "04t5w000003gWWBAA2",
         "trigger-actions-framework@0.3.2": "04tKY000000PdZOYA0",
         "platform-base": "0HoP100000001CDKAY",
         "bids": "0HoP100000001fFKAQ"
