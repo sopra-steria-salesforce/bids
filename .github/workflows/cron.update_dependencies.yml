@@ -24,7 +24,7 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
       - name: Check Dependencies
         id: check
         run: |
@@ -49,17 +49,17 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/create-github-app-token@v1
+      - uses: actions/create-github-app-token@v2
         id: generate_token
         with:
           app-id: ${{ secrets.SF_GITHUB_BOT_APP_ID }}
           private-key: ${{ secrets.SF_GITHUB_BOT_PRIVATE_KEY }}
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           token: ${{ steps.generate_token.outputs.token }} # allows push to master
-      - uses: sopra-steria-salesforce/sf-cli-setup@v0.8
+      - uses: sopra-steria-salesforce/sf-cli-setup@v1
         with:
-          sf-cli-version: 2.104.6
+          sf-cli-version: 2.98.6
           username: ${{ vars.SF_PROD_USERNAME }}
           client-id: ${{ secrets.SF_PROD_CLIENT_ID }}
           private-key: ${{ secrets.SF_PROD_PRIVATE_KEY }}
@@ -92,22 +92,37 @@ jobs:
               echo "Old Package Version: $oldPackageVersion"
               echo "New Package Version: $newPackageVersion" && echo ""
               printf -v versions '%s\n%s' "$oldPackageVersion" "$newPackageVersion"
-              
-              #* if the version is already the latest OR the version is null (null means the package/repo is way too old because it goes over the 500 limit from the query and can be ignored)
-              # TODO: can probably do a group by in the query in the previous steps to remove the LIMIT 500 part and avoid null.LATEST
-              if [ "$oldPackageVersion" = "$newPackageVersion" ] || [ "$newPackageVersion" == "null.LATEST" ]; then
-                  echo "No change, current version and newest released version are the same."
+          
+          
+              #* Skip managed packages
+              if [ "$oldPackageVersion" == "null" ]; then
+                  echo "Skipping package $packageName — likely managed package without version numbers"
+
+              #* Skip if no version found in query results (likely over 500 limit)
+              elif [ "$newPackageVersion" == "null.LATEST" ]; then
+                  echo "::notice::Skipping package $packageName — No version found in query results (likely over 500 limit), keeping current version. If wrong, consider updating manually (one time fix, most likely)"
                   project=$(jq '.packageDirectories[0].dependencies['$index'].versionNumber = "'$oldPackageVersion'"' ./sfdx-project.json)
+                  echo $project > ./sfdx-project.json
+          
+              #* Skip if versions are the same
+              elif [ "$oldPackageVersion" = "$newPackageVersion" ]; then
+                  echo "Skipping package $packageName — Current version and newest released version are the same."
+                  project=$(jq '.packageDirectories[0].dependencies['$index'].versionNumber = "'$oldPackageVersion'"' ./sfdx-project.json)
+                  echo $project > ./sfdx-project.json
+
+              #* Update if new version is greater than old version
               elif [[ $versions = "$(sort -V <<< "$versions")" ]]; then
                   echo "::notice::Upgraded $packageName from $oldPackageVersion to $newPackageVersion"
                   project=$(jq '.packageDirectories[0].dependencies['$index'].versionNumber = "'$newPackageVersion'"' ./sfdx-project.json)
+                  echo $project > ./sfdx-project.json
+          
+              #* Skip if new version is less than old version
               else
-                  echo "No change, because a beta version is manually added and is higher than newest released version"
+                  echo "Skipping package $packageName — Current version is higher than the newest released version"
                   project=$(jq '.packageDirectories[0].dependencies['$index'].versionNumber = "'$oldPackageVersion'"' ./sfdx-project.json)
+                  echo $project > ./sfdx-project.json
               fi
-
-              echo $project > ./sfdx-project.json
-              
+          
               ((index=index+1))
           done
 
