@@ -24,34 +24,36 @@
 		"**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}": [
 			"prettier --write"
 		],
-		"**/{aura,lwc}/**/*.js": [
+		"**/{aura,lwc}/**": [
 			"eslint"
 		],
 		"**/lwc/**": [
-			"sfdx-lwc-jest -- --bail --findRelatedTests --passWithNoTests"
+			"sfdx-lwc-jest --skipApiVersionCheck -- --bail --findRelatedTests"
 		]
 	},
 	"devDependencies": {
-		"@flxbl-io/sfp": "^39.6.1",
-		"@lwc/eslint-plugin-lwc": "^3.2.0",
-		"@prettier/plugin-xml": "^3.4.2",
-		"@sa11y/jest": "^7.3.1",
-		"@salesforce/core": "^8.19.1",
-		"@salesforce/eslint-config-lwc": "^4.0.0",
-		"@salesforce/eslint-plugin-aura": "^3.0.0",
-		"@salesforce/eslint-plugin-lightning": "^2.0.0",
-		"@salesforce/sfdx-lwc-jest": "^7.1.0",
-		"eslint": "^9.33.0",
-		"eslint-plugin-import": "^2.32.0",
-		"eslint-plugin-jest": "^29.0.1",
+		"@flxbl-io/sfp": "^39.4.1",
+		"@lwc/eslint-plugin-lwc": "^2.0.1",
+		"@prettier/plugin-xml": "^3.4.1",
+		"@sa11y/jest": "^6.13.0",
+		"@salesforce/cli": "^2.72.21",
+		"@salesforce/core": "^8.8.2",
+		"@salesforce/eslint-config-lwc": "^3.7.1",
+		"@salesforce/eslint-plugin-aura": "^2.1.0",
+		"@salesforce/eslint-plugin-lightning": "^1.0.1",
+		"@salesforce/sfdx-lwc-jest": "^5.1.0",
+		"eslint": "^8.57.1",
+		"eslint-config-prettier": "9.1.0",
+		"eslint-plugin-import": "^2.30.0",
+		"eslint-plugin-jest": "^28.10.0",
 		"jest-canvas-mock": "^2.5.2",
-		"lint-staged": "^16.1.5",
-		"pino-pretty": "^13.1.1",
-		"prettier": "^3.6.2",
-		"prettier-plugin-apex": "^2.2.6",
-		"ssdx-cli": "^1.6.4"
+		"lint-staged": "^15.2.10",
+		"pino-pretty": "^11.2.2",
+		"prettier": "^3.4.2",
+		"prettier-plugin-apex": "^2.2.2",
+		"ssdx-cli": "^0.11.0"
 	},
 	"volta": {
-		"node": "20.15.0"
+		"node": "18.19.1"
 	}
 }
