@@ -1,13 +1,13 @@
-name: '[PR] Validation'
+name: "[PR] Validation"
 on:
   pull_request:
     types:
       - opened
       - synchronize
     paths:
-      - 'force-app/**'
-      - 'unpackaged/**'
-      - 'config/**'
+      - "force-app/**"
+      - "unpackaged/**"
+      - "config/**"
 concurrency:
   group: validation-${{ github.base_ref }}-${{ github.head_ref }}
   cancel-in-progress: true
@@ -47,7 +47,7 @@ jobs:
       issues: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
       - run: echo "exists=$(cat ./sfdx-project.json | jq -r '.packageDirectories[0].dependencies | length > 0')" >> $GITHUB_OUTPUT
         id: dependencies
@@ -132,8 +132,8 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: sopra-steria-salesforce/sf-cli-setup@v1
+      - uses: actions/checkout@v4
+      - uses: sopra-steria-salesforce/sf-cli-setup@v0.8
         if: needs.scratch-org.outputs.username
         with:
           sf-cli-version: 2.104.6
@@ -198,8 +198,8 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: sopra-steria-salesforce/sf-cli-setup@v1
+      - uses: actions/checkout@v4
+      - uses: sopra-steria-salesforce/sf-cli-setup@v0.8
         if: needs.scratch-org.outputs.username
         with:
           sf-cli-version: 2.104.6
@@ -243,8 +243,8 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v5
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         continue-on-error: true # fails if no tests run, but the step to check if classes exists will catch it and exit
         with:
           name: apex-tests
@@ -274,20 +274,28 @@ jobs:
           totalLines=0
           for row in $(jq -c -r '.[]' <<< "$(cat tests/apex/test-result-codecoverage.json)"); do
             name=$(jq -r '.name' <<< $row)
+
+            # if the class in the code coverage report is a class in this repo, count the
             if [[ " ${classes[@]} " =~ " ${name} " ]]; then
-            
+          
               covered=$(jq '.totalCovered' <<< $row)
               lines=$(jq '.totalLines' <<< $row)
-              
+          
               if [[ $covered != "null" && $lines != "null" && $lines != "0" ]]; then
-                let totalCovered+=covered
-                let totalLines+=lines
+                totalCovered=$((totalCovered + covered))
+                totalLines=$((totalLines + lines))
               fi
             fi
           done
 
-          let codecoverage=totalCovered*100/totalLines
-          echo "codecoverage=$(echo $codecoverage)" >> $GITHUB_OUTPUT
+          # If no lines to cover, set coverage to 100%
+          if [[ $totalLines == "0" ]]; then
+            codecoverage=100
+          else
+            codecoverage=$((totalCovered * 100 / totalLines))
+          fi
+
+          echo "codecoverage=$codecoverage" >> $GITHUB_OUTPUT
 
       # Validate 75% Code Coverage
       - name: Validate 75% Code Coverage
