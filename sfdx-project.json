@@ -11,7 +11,7 @@
                 { "package": "Pardot@5.5.0.2" },
                 { "package": "LightningMessagingUtility@1.5.0.1" },
                 { "package": "trigger-actions-framework@0.3.2" },
-                { "package": "platform-base", "versionNumber": "2.18.0.LATEST" }
+                { "package": "platform-base", "versionNumber": "2.21.0.LATEST" }
             ]
         }
     ],
