@@ -33,7 +33,7 @@
 	},
 	"devDependencies": {
 		"@flxbl-io/sfp": "^39.4.1",
-		"@lwc/eslint-plugin-lwc": "^2.0.1",
+		"@lwc/eslint-plugin-lwc": "^3.3.0",
 		"@prettier/plugin-xml": "^3.4.1",
 		"@sa11y/jest": "^6.13.0",
 		"@salesforce/cli": "^2.72.21",
