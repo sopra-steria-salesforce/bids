@@ -38,7 +38,7 @@
 		"@sa11y/jest": "^6.13.0",
 		"@salesforce/cli": "^2.72.21",
 		"@salesforce/core": "^8.8.2",
-		"@salesforce/eslint-config-lwc": "^3.7.1",
+		"@salesforce/eslint-config-lwc": "^4.1.2",
 		"@salesforce/eslint-plugin-aura": "^2.1.0",
 		"@salesforce/eslint-plugin-lightning": "^1.0.1",
 		"@salesforce/sfdx-lwc-jest": "^5.1.0",
