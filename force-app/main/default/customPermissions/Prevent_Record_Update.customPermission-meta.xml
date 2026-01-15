@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Used in validation rules to prevent users without this permission from creating and updating records.</description>
+    <isLicensed>false</isLicensed>
+    <label>Prevent Record Update</label>
+</CustomPermission>
