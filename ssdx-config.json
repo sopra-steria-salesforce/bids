@@ -11,10 +11,6 @@
         {
             "type": "metadata",
             "value": "unpackaged"
-        },
-        {
-            "type": "metadata",
-            "value": "scratchOrgSetup"
         }
     ],
     "post_install": [

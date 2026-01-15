@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Restrict_Record_Create_and_Update</fullName>
+    <active>true</active>
+    <description>Prevents users from creating or updating records unless they have the ‘Prevent_Record_Create_and_Update’ custom permission.</description>
+    <errorConditionFormula>NOT($Permission.Prevent_Record_Create_and_Update)</errorConditionFormula>
+    <errorMessage>Salesforce is in Read-Only mode. All updates should be performed in ServiceNow.</errorMessage>
+</ValidationRule>
