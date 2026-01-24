@@ -4,29 +4,14 @@
             "path": "force-app",
             "package": "bids",
             "versionNumber": "0.3.0.NEXT",
-            "seedMetadata": {
-                "path": "pre_dependencies/standardValueSets"
-            },
+            "seedMetadata": { "path": "pre_dependencies/standardValueSets" },
             "dependencies": [
-                {
-                    "package": "NebulaLogger@4.16.0.2"
-                },
-                {
-                    "package": "DashboardsGSP@2.9.0.1"
-                },
-                {
-                    "package": "Pardot@5.5.0.2"
-                },
-                {
-                    "package": "LightningMessagingUtility@1.5.0.1"
-                },
-                {
-                    "package": "trigger-actions-framework@0.3.2"
-                },
-                {
-                    "package": "platform-base",
-                    "versionNumber": "2.31.0.LATEST"
-                }
+                { "package": "NebulaLogger@4.16.0.2" },
+                { "package": "DashboardsGSP@2.9.0.1" },
+                { "package": "Pardot@5.5.0.2" },
+                { "package": "LightningMessagingUtility@1.5.0.1" },
+                { "package": "trigger-actions-framework@0.3.2" },
+                { "package": "platform-base", "versionNumber": "2.32.0.LATEST" }
             ]
         }
     ],
@@ -43,7 +28,5 @@
         "platform-base": "0HoP100000001CDKAY",
         "bids": "0HoP100000001fFKAQ"
     },
-    "sourceBehaviorOptions": [
-        "decomposeWorkflowBeta"
-    ]
+    "sourceBehaviorOptions": ["decomposeWorkflowBeta"]
 }
