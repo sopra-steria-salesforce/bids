@@ -51,7 +51,7 @@
 		"pino-pretty": "^11.2.2",
 		"prettier": "^3.4.2",
 		"prettier-plugin-apex": "^2.2.2",
-		"ssdx-cli": "^0.11.0"
+		"ssdx-cli": "^1.7.1"
 	},
 	"volta": {
 		"node": "18.19.1"
